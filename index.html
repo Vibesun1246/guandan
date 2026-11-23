@@ -356,8 +356,9 @@ const G = (() => {
     log(st, `第${st.round}局：打${rname(L)}（${TEAM[lt]}的级）`);
     const o = st.prev.order;
     const pp = st.prev.pp != null ? st.prev.pp : o.indexOf(partner(o[0]));
-    // 1、2 走完：三游贡头游、末游贡二游；1、3：末游贡三游；1、4：内贡，末游贡头游
-    const pairs = pp === 1 ? [[o[2], o[0]], [o[3], o[1]]] : pp === 2 ? [[o[3], o[2]]] : [[o[3], o[0]]];
+    // 1、2 走完：三游和末游都进贡，大的给头游、小的给二游；1、3：末游贡三游；1、4：内贡，末游贡头游
+    const pairs = pp === 1 ? [[o[2], null], [o[3], null]] : pp === 2 ? [[o[3], o[2]]] : [[o[3], o[0]]];
+    g.recv = pp === 1 ? [o[0], o[1]] : null;
     const givers = pairs.map((p) => p[0]);
     const bigJ = givers.reduce((a, s) => a + hands[s].filter((id) => card(id).r === 17).length, 0);
     if (bigJ >= 2) {
@@ -383,9 +384,20 @@ const G = (() => {
   function doTribute(st, t, id) {
     const g = st.g;
     g.hands[t.from].splice(g.hands[t.from].indexOf(id), 1);
-    g.hands[t.to].push(id);
     t.id = id;
-    log(st, `@${t.from} 向 @${t.to} 进贡 ${cardName(id)}`);
+    if (t.to != null) {
+      g.hands[t.to].push(id);
+      log(st, `@${t.from} 向 @${t.to} 进贡 ${cardName(id)}`);
+      return;
+    }
+    log(st, `@${t.from} 交出进贡牌 ${cardName(id)}`);
+    if (g.trib.some((x) => x.id == null)) return;
+    // 两张进贡牌都交出后：大的给头游，小的给二游（一样大时三游的给头游）
+    const [a, b] = g.trib;
+    const big = val(card(b.id).r, g.L) > val(card(a.id).r, g.L) ? b : a;
+    const small = big === a ? b : a;
+    big.to = g.recv[0]; small.to = g.recv[1];
+    for (const x of [big, small]) { g.hands[x.to].push(x.id); log(st, `@${x.from} 的 ${cardName(x.id)} 给 @${x.to}`); }
   }
   function giveTribute(st, uid, id) {
     if (st.phase !== 'tribute') throw E('现在不是进贡阶段');
@@ -400,7 +412,7 @@ const G = (() => {
   function giveBack(st, uid, id) {
     if (st.phase !== 'tribute') throw E('现在不是还贡阶段');
     const s = needSeat(st, uid), g = st.g;
-    const t = g.trib.find((x) => x.to === s && x.id != null && x.ret == null);
+    const t = g.trib.find((x) => x.to === s && x.to != null && x.id != null && x.ret == null);
     if (!t) throw E('现在还不需要你还贡');
     const h = g.hands[s];
     if (!h.includes(id)) throw E('这张牌不在你手里');
@@ -411,8 +423,7 @@ const G = (() => {
     log(st, `@${s} 还给 @${t.from} ${cardName(id)}`);
     if (g.trib.every((x) => x.ret != null)) {
       st.phase = 'play';
-      let lead = g.trib[0].from;
-      if (g.trib.length === 2 && val(card(g.trib[1].id).r, g.L) > val(card(g.trib[0].id).r, g.L)) lead = g.trib[1].from;
+      const lead = (g.trib.find((x) => g.recv ? x.to === g.recv[0] : true) || g.trib[0]).from;
       g.turn = lead;
       log(st, `@${lead} 先出牌`);
     }
@@ -784,11 +795,14 @@ function slotHTML(st, s, pos) {
 function panelHTML(st, me) {
   const g = st.g;
   if (st.phase === 'tribute') {
+    const rule = g.recv ? '<div class="lvl">两张进贡牌：大的给头游，小的给二游</div>' : '';
     const lines = g.trib.map((t) => {
       const a = t.id == null ? '正在挑选进贡的牌' : t.ret == null ? `进贡了 ${G.cardName(t.id)}，等待还贡` : `进贡 ${G.cardName(t.id)}，已收到还贡`;
-      return `<li>${fmt(st, `@${t.from} → @${t.to}：`)}${esc(a)}</li>`;
+      const to = t.to != null ? `@${t.to}` : '头游或二游';
+      const a2 = t.to == null && t.id != null ? `交出了 ${G.cardName(t.id)}，等另一张进贡牌` : a;
+      return `<li>${fmt(st, `@${t.from} → ${to}：`)}${esc(a2)}</li>`;
     }).join('');
-    return `<div class="panel"><div class="lvl">第 ${st.round} 局 · 进贡与还贡</div><div class="lv">${G.rname(g.L)}</div><ul class="res">${lines}</ul></div>`;
+    return `<div class="panel"><div class="lvl">第 ${st.round} 局 · 进贡与还贡</div><div class="lv">${G.rname(g.L)}</div>${rule}<ul class="res">${lines}</ul></div>`;
   }
   if (st.phase === 'roundEnd' || st.phase === 'matchEnd') {
     const p = st.prev;
@@ -835,8 +849,8 @@ function handHTML(st, me) {
       <span class="hint">${g.last ? '要管上 ' + esc(seatName(st, g.last.seat)) + ' 的' + esc(g.trick[g.last.seat].label) + ' ' + esc(G.keyName(g.last, g.L)) : '你先出，任意合法牌型都可以'}</span>`;
   } else if (st.phase === 'tribute') {
     const give = g.trib.find((x) => x.from === me && x.id == null);
-    const back = g.trib.find((x) => x.to === me && x.id != null && x.ret == null);
-    if (give) ctrl = `<button class="btn" data-act="tribute" ${sel.size === 1 ? '' : 'disabled'}>进贡给 ${esc(seatName(st, give.to))}</button><span class="hint">选一张你手里最大的牌（同样大的牌，花色随你挑）</span>`;
+    const back = g.trib.find((x) => x.to === me && x.to != null && x.id != null && x.ret == null);
+    if (give) ctrl = `<button class="btn" data-act="tribute" ${sel.size === 1 ? '' : 'disabled'}>${give.to != null ? '进贡给 ' + esc(seatName(st, give.to)) : '交出进贡牌'}</button><span class="hint">选一张你手里最大的牌（同样大的牌，花色随你挑）</span>`;
     else if (back) ctrl = `<button class="btn" data-act="back" ${sel.size === 1 ? '' : 'disabled'}>还贡给 ${esc(seatName(st, back.from))}</button><span class="hint">选一张10或以下的牌还回去</span>`;
     else ctrl = '<span class="hint">等待进贡和还贡完成…</span>';
   } else if (st.phase === 'play') {
