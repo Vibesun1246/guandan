@@ -155,23 +155,24 @@ aside{display:flex;flex-direction:column;gap:14px}
 </head>
 <body>
 <header>
-  <h1>掼蛋<small>好友联机 · 我们的规则</small></h1>
+  <h1><span data-i18n="h1">掼蛋</span><small data-i18n="sub">好友联机 · 我们的规则</small></h1>
   <nav class="tabs">
-    <button class="tab" data-act="room" data-r="r1" aria-pressed="true">1号房间<span id="c1"></span></button>
-    <button class="tab" data-act="room" data-r="r2" aria-pressed="false">2号房间<span id="c2"></span></button>
+    <button class="tab" data-act="room" data-r="r1" aria-pressed="true"><span data-i18n="room1">1号房间</span><span id="c1"></span></button>
+    <button class="tab" data-act="room" data-r="r2" aria-pressed="false"><span data-i18n="room2">2号房间</span><span id="c2"></span></button>
+    <button class="tab" data-act="lang" data-i18n="langBtn">English</button>
   </nav>
 </header>
 <div class="nickbar">
-  <label for="nick">你的昵称</label><input id="nick" maxlength="12" placeholder="例如：James" autocomplete="nickname">
-  <span class="small">入座前先填好</span>
+  <label for="nick" data-i18n="nick">你的昵称</label><input id="nick" maxlength="12" placeholder="例如：James" data-i18n-ph="nickPh" autocomplete="nickname">
+  <span class="small" data-i18n="nickHint">入座前先填好</span>
   <div class="snd">
-    <div class="vol" data-k="music"><button type="button" data-act="snd" data-k="music" aria-pressed="true">背景音乐</button><input type="range" min="0" max="100" step="5" data-vol="music" aria-label="背景音乐音量"><output></output></div>
-    <div class="vol" data-k="sfx"><button type="button" data-act="snd" data-k="sfx" aria-pressed="true">音效</button><input type="range" min="0" max="100" step="5" data-vol="sfx" aria-label="音效音量"><output></output></div>
-    <div class="vol" data-k="voice"><button type="button" data-act="snd" data-k="voice" aria-pressed="true">语音报牌</button><input type="range" min="0" max="100" step="5" data-vol="voice" aria-label="语音报牌音量"><output></output></div>
+    <div class="vol" data-k="music"><button type="button" data-act="snd" data-k="music" aria-pressed="true" data-i18n="music">背景音乐</button><input type="range" min="0" max="100" step="5" data-vol="music" aria-label="背景音乐音量"><output></output></div>
+    <div class="vol" data-k="sfx"><button type="button" data-act="snd" data-k="sfx" aria-pressed="true" data-i18n="sfx">音效</button><input type="range" min="0" max="100" step="5" data-vol="sfx" aria-label="音效音量"><output></output></div>
+    <div class="vol" data-k="voice"><button type="button" data-act="snd" data-k="voice" aria-pressed="true" data-i18n="voice">语音报牌</button><input type="range" min="0" max="100" step="5" data-vol="voice" aria-label="语音报牌音量"><output></output></div>
   </div>
 </div>
 <main>
-  <section><div id="stage"><div class="note">正在连接牌桌…</div></div><div id="chatpanel" class="handwrap" hidden></div></section>
+  <section><div id="stage"><div class="note" data-i18n="connecting">正在连接牌桌…</div></div><div id="chatpanel" class="handwrap" hidden></div></section>
   <aside id="side"></aside>
 </main>
 <div class="toast" id="toast" hidden></div>
@@ -184,7 +185,7 @@ const G = (() => {
   const TEAM = ['A队', 'B队'];
   const RN = { 11: 'J', 12: 'Q', 13: 'K', 14: 'A', 16: '小王', 17: '大王' };
 
-  const E = (m) => new Error(m);
+  const E = (code) => { const e = new Error(code); e.code = code; return e; };
   function card(id) {
     const d = Math.floor(id / 54), i = id % 54;
     if (i === 52) return { id, d, r: 16, s: 'J' };
@@ -307,30 +308,30 @@ const G = (() => {
   function fresh() {
     return { v: 0, phase: 'lobby', seats: [null, null, null, null], levels: [2, 2], aFails: [0, 0], round: 0, g: null, prev: null, votes: [], log: [], winner: null };
   }
-  function log(st, m) { st.log.push(m); if (st.log.length > 40) st.log.splice(0, st.log.length - 40); }
+  function log(st, k, p) { st.log.push(Object.assign({ k }, p || {})); if (st.log.length > 40) st.log.splice(0, st.log.length - 40); }
   const seatOf = (st, uid) => st.seats.indexOf(uid);
-  function needSeat(st, uid) { const s = seatOf(st, uid); if (s < 0) throw E('你还没有入座'); return s; }
+  function needSeat(st, uid) { const s = seatOf(st, uid); if (s < 0) throw E('notSeated'); return s; }
 
   function sit(st, uid, i) {
-    if (st.phase !== 'lobby') throw E('游戏进行中，不能换座');
-    if (st.seats[i] && st.seats[i] !== uid) throw E('这个座位已经有人了');
+    if (st.phase !== 'lobby') throw E('inGameNoSwap');
+    if (st.seats[i] && st.seats[i] !== uid) throw E('seatTaken');
     const cur = seatOf(st, uid);
     if (cur >= 0) st.seats[cur] = null;
     st.seats[i] = uid;
     return st;
   }
   function leave(st, uid) {
-    if (st.phase !== 'lobby') throw E('游戏进行中，不能离座');
+    if (st.phase !== 'lobby') throw E('inGameNoLeave');
     const c = seatOf(st, uid);
     if (c >= 0) st.seats[c] = null;
     return st;
   }
   function start(st, uid, rng) {
-    if (st.phase !== 'lobby') throw E('游戏已经开始了');
-    if (st.seats.some((s) => !s)) throw E('需要4个人坐满才能开始');
+    if (st.phase !== 'lobby') throw E('started');
+    if (st.seats.some((s) => !s)) throw E('needFour');
     needSeat(st, uid);
     Object.assign(st, { levels: [2, 2], aFails: [0, 0], round: 0, winner: null, votes: [], prev: null, log: [] });
-    log(st, '新的一盘开始，两队都从2打起');
+    log(st, 'start');
     deal(st, rng);
     return st;
   }
@@ -361,10 +362,10 @@ const G = (() => {
     if (first) {
       const s = hands.findIndex((h) => h.includes(MARKED));
       g.turn = s;
-      log(st, `第1局打2，@${s} 拿到★红桃3，先出牌`);
+      log(st, 'first', { s });
       return;
     }
-    log(st, `第${st.round}局：打${rname(L)}（${TEAM[lt]}的级）`);
+    log(st, 'round', { r: st.round, L, team: lt });
     const o = st.prev.order;
     const pp = st.prev.pp != null ? st.prev.pp : o.indexOf(partner(o[0]));
     // 1、2 走完：三游和末游都进贡，大的给头游、小的给二游；1、3：末游贡头游；1、4：内贡，末游贡头游
@@ -374,11 +375,11 @@ const G = (() => {
     const bigJ = givers.reduce((a, s) => a + hands[s].filter((id) => card(id).r === 17).length, 0);
     if (bigJ >= 2) {
       g.turn = o[0];
-      log(st, `${givers.map((s) => '@' + s).join('和')} 手里有两张大王，抗贡！@${o[0]} 先出牌`);
+      log(st, 'anti', { givers, lead: o[0] });
       return;
     }
     g.trib = pairs.map(([from, to]) => ({ from, to, id: null, ret: null }));
-    if (pp === 3) log(st, `上一局是头游加末游，这局内贡`);
+    if (pp === 3) log(st, 'inner');
     st.phase = 'tribute';
     g.turn = -1;
     // 最大的牌只有一种牌面时自动进贡，不用等
@@ -398,45 +399,45 @@ const G = (() => {
     t.id = id;
     if (t.to != null) {
       g.hands[t.to].push(id);
-      log(st, `@${t.from} 向 @${t.to} 进贡 ${cardName(id)}`);
+      log(st, 'trib', { from: t.from, to: t.to, card: id });
       return;
     }
-    log(st, `@${t.from} 交出进贡牌 ${cardName(id)}`);
+    log(st, 'tribOut', { from: t.from, card: id });
     if (g.trib.some((x) => x.id == null)) return;
     // 两张进贡牌都交出后：大的给头游，小的给二游（一样大时三游的给头游）
     const [a, b] = g.trib;
     const big = val(card(b.id).r, g.L) > val(card(a.id).r, g.L) ? b : a;
     const small = big === a ? b : a;
     big.to = g.recv[0]; small.to = g.recv[1];
-    for (const x of [big, small]) { g.hands[x.to].push(x.id); log(st, `@${x.from} 的 ${cardName(x.id)} 给 @${x.to}`); }
+    for (const x of [big, small]) { g.hands[x.to].push(x.id); log(st, 'tribTo', { from: x.from, to: x.to, card: x.id }); }
   }
   function giveTribute(st, uid, id) {
-    if (st.phase !== 'tribute') throw E('现在不是进贡阶段');
+    if (st.phase !== 'tribute') throw E('notTribute');
     const s = needSeat(st, uid), g = st.g;
     const t = g.trib.find((x) => x.from === s && x.id == null);
-    if (!t) throw E('你不需要进贡');
-    if (!g.hands[s].includes(id)) throw E('这张牌不在你手里');
-    if (!tributeChoices(g.hands[s], g.L).includes(id)) throw E('进贡必须是你手里最大的牌');
+    if (!t) throw E('noTributeNeeded');
+    if (!g.hands[s].includes(id)) throw E('notInHand');
+    if (!tributeChoices(g.hands[s], g.L).includes(id)) throw E('mustBeMax');
     doTribute(st, t, id);
     return st;
   }
   function giveBack(st, uid, id) {
-    if (st.phase !== 'tribute') throw E('现在不是还贡阶段');
+    if (st.phase !== 'tribute') throw E('notReturn');
     const s = needSeat(st, uid), g = st.g;
     const t = g.trib.find((x) => x.to === s && x.to != null && x.id != null && x.ret == null);
-    if (!t) throw E('现在还不需要你还贡');
+    if (!t) throw E('noReturnYet');
     const h = g.hands[s];
-    if (!h.includes(id)) throw E('这张牌不在你手里');
-    if (h.some((x) => card(x).r <= 10) && !(card(id).r <= 10)) throw E('还贡要还一张10或以下的牌');
+    if (!h.includes(id)) throw E('notInHand');
+    if (h.some((x) => card(x).r <= 10) && !(card(id).r <= 10)) throw E('returnSmall');
     h.splice(h.indexOf(id), 1);
     g.hands[t.from].push(id);
     t.ret = id;
-    log(st, `@${s} 还给 @${t.from} ${cardName(id)}`);
+    log(st, 'ret', { s, to: t.from, card: id });
     if (g.trib.every((x) => x.ret != null)) {
       st.phase = 'play';
       const lead = (g.trib.find((x) => g.recv ? x.to === g.recv[0] : true) || g.trib[0]).from;
       g.turn = lead;
-      log(st, `@${lead} 先出牌`);
+      log(st, 'lead', { s: lead });
     }
     return st;
   }
@@ -445,34 +446,34 @@ const G = (() => {
   function options(st, ids) { return analyze(ids, st.g.L).filter((p) => beats(p, st.g.last)); }
 
   function play(st, uid, ids, type) {
-    if (st.phase !== 'play') throw E('现在不能出牌');
+    if (st.phase !== 'play') throw E('cantPlay');
     const g = st.g, s = needSeat(st, uid);
-    if (s !== g.turn) throw E('还没轮到你');
+    if (s !== g.turn) throw E('notYourTurn');
     const h = g.hands[s];
-    if (!ids.length || new Set(ids).size !== ids.length || !ids.every((i) => h.includes(i))) throw E('出的牌不在你手里');
+    if (!ids.length || new Set(ids).size !== ids.length || !ids.every((i) => h.includes(i))) throw E('playNotInHand');
     let opts = options(st, ids);
     if (type) opts = opts.filter((o) => o.type === type);
-    if (!opts.length) throw E(g.last ? '管不上，或者牌型不对' : '这不是有效的牌型');
+    if (!opts.length) throw E(g.last ? 'cantBeat' : 'invalidType');
     const p = opts[0];
     for (const i of ids) h.splice(h.indexOf(i), 1);
     if (!g.last) g.trick = {};
     g.last = { seat: s, ids: sortHand(ids, g.L), type: p.type, key: p.key, n: p.n, bomb: p.bomb };
     g.passes = 0;
-    g.trick[s] = { ids: g.last.ids, label: describe(p) };
+    g.trick[s] = { ids: g.last.ids, type: p.type, key: p.key, n: p.n };
     st.ev = { k: (st.ev ? st.ev.k : 0) + 1, seat: s, kind: 'play', ids: g.last.ids, type: p.type, key: p.key, L: g.L, fin: h.length ? -1 : g.done.length };
     if (!h.length) {
       g.done.push(s);
-      log(st, `@${s} 出完了，是${POS[g.done.length - 1]}`);
+      log(st, 'out', { s, pos: g.done.length - 1 });
       if (checkEnd(st)) return st;
     }
     g.turn = nextActive(g, s);
     return st;
   }
   function pass(st, uid) {
-    if (st.phase !== 'play') throw E('现在不能操作');
+    if (st.phase !== 'play') throw E('cantAct');
     const g = st.g, s = needSeat(st, uid);
-    if (s !== g.turn) throw E('还没轮到你');
-    if (!g.last) throw E('你是先手，必须出牌');
+    if (s !== g.turn) throw E('notYourTurn');
+    if (!g.last) throw E('mustLead');
     g.passes++;
     g.trick[s] = { pass: true };
     st.ev = { k: (st.ev ? st.ev.k : 0) + 1, seat: s, kind: 'pass' };
@@ -481,7 +482,7 @@ const G = (() => {
       const ls = g.last.seat;
       let lead;
       if (!g.done.includes(ls)) lead = ls;
-      else if (!g.done.includes(partner(ls))) { lead = partner(ls); log(st, `@${lead} 接风`); }
+      else if (!g.done.includes(partner(ls))) { lead = partner(ls); log(st, 'jiefeng', { s: lead }); }
       else lead = nextActive(g, ls);
       g.last = null;
       g.passes = 0;
@@ -508,45 +509,45 @@ const G = (() => {
         st.aFails[T]++;
         if (st.aFails[T] >= 3) {
           st.levels[T] = 2; st.aFails[T] = 0;
-          res.notes.push(`${TEAM[T]}连续3次打A没过，掉回2`);
-        } else res.notes.push(`${TEAM[T]}打A没过（第${st.aFails[T]}次）`);
+          res.notes.push({ k: 'aDrop', team: T });
+        } else res.notes.push({ k: 'aFail', team: T, n: st.aFails[T] });
       }
     }
     if (matchWin) {
       st.phase = 'matchEnd';
       st.winner = w;
-      res.notes.push(`${TEAM[w]}过A，赢下整盘！`);
+      res.notes.push({ k: 'win', team: w });
     } else {
       if (!(aRound && w === g.lt)) {
         const from = st.levels[w];
         st.levels[w] = Math.min(14, from + up);
-        res.notes.unshift(`${TEAM[w]}升${up}级：${rname(from)} → ${rname(st.levels[w])}`);
+        res.notes.unshift({ k: 'up', team: w, n: up, lvFrom: from, lvTo: st.levels[w] });
       }
       st.phase = 'roundEnd';
     }
-    res.notes.forEach((m) => log(st, m));
+    res.notes.forEach((m) => st.log.push(m));
     st.prev = res;
     g.turn = -1;
     return true;
   }
   function nextRound(st, uid, rng) {
-    if (st.phase !== 'roundEnd') throw E('这一局还没结束');
+    if (st.phase !== 'roundEnd') throw E('roundNotOver');
     needSeat(st, uid);
     deal(st, rng);
     return st;
   }
   function toLobby(st) {
     Object.assign(st, { phase: 'lobby', g: null, votes: [], levels: [2, 2], aFails: [0, 0], round: 0, winner: null, prev: null });
-    log(st, '对局已重置，可以重新选座后开始');
+    log(st, 'reset');
     return st;
   }
   function vote(st, uid, on) {
     const s = needSeat(st, uid);
-    if (st.phase === 'lobby') throw E('现在不需要重置');
+    if (st.phase === 'lobby') throw E('noResetNeeded');
     if (st.phase === 'matchEnd') return toLobby(st);
     st.votes = st.votes.filter((x) => x !== uid && st.seats.includes(x));
-    if (on) { st.votes.push(uid); log(st, `@${s} 申请重置（${st.votes.length}/4）`); }
-    else log(st, `@${s} 取消了重置申请`);
+    if (on) { st.votes.push(uid); log(st, 'vote', { s, n: st.votes.length }); }
+    else log(st, 'unvote', { s });
     if (st.seats.every((x) => st.votes.includes(x))) toLobby(st);
     return st;
   }
@@ -575,7 +576,7 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const rand = () => crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296;
 const ls = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
-let db = null, uid = null, ready = false, fatal = '';
+let db = null, uid = null, ready = false, fatal = null;
 let nick = ls.get('gd-nick', '');
 let room = location.hash === '#room2' ? 'r2' : 'r1';
 const states = { r1: null, r2: null };
@@ -587,9 +588,136 @@ const vol = Object.assign({ music: 60, sfx: 70, voice: 50 }, ls.get('gd-vol', {}
 const MAXV = { music: 0.075, sfx: 0.5, lobby: 0.15 };
 const lobbyVol = () => MAXV.lobby * vol.music / 100;
 
+// ================= 语言 / Language =================
+const I18N = {
+  zh: {
+    title: '掼蛋 · 好友联机', h1: '掼蛋', sub: '好友联机 · 我们的规则', room1: '1号房间', room2: '2号房间', inGame: '对局中', people: '{n}/4人',
+    nick: '你的昵称', nickPh: '例如：James', nickHint: '入座前先填好', music: '背景音乐', sfx: '音效', voice: '语音报牌', volAria: '{x}音量', connecting: '正在连接牌桌…',
+    langBtn: 'English', empty: '空座', player: '玩家', you: '（你）', teams: ['A队', 'B队'], pos: ['头游', '二游', '三游', '末游'],
+    bigJoker: '大王', smallJoker: '小王', jokerFace: ['小王', '大王'], wildTag: '配', wildAria: ' 万能牌',
+    seatClick: '点击坐下', mySeat: '这是你的座位', taken: '已入座', lobbyHelp: '选一个座位坐下。{A}和{B}的两个人各自坐对家。',
+    start: '开始游戏', waitFour: '等待4人坐满', leave: '离开座位', myCount: '{n} 张', left: '剩 {n} 张', claim: '这是我的座位',
+    tomatoAria: '向{name}扔番茄', tomatoTitle: '扔番茄', coffeeAria: '给{name}倒咖啡', coffeeTitle: '倒咖啡', thinking: '出牌中…', pass: '不出',
+    tribRule: '两张进贡牌：大的给头游，小的给二游', tribPicking: '正在挑选进贡的牌', tribWaitRet: '进贡了 {card}，等待还贡', tribDone: '进贡 {card}，已收到还贡',
+    tribToEither: '头游或二游', tribHanded: '交出了 {card}，等另一张进贡牌', tribPanel: '第 {r} 局 · 进贡与还贡', roundOver: '第 {r} 局结束',
+    nextRound: '开始下一局', waitNext: '等待玩家开始下一局', resetLobby: '重置，回到选座大厅', yourTurn: '轮到你出牌', free: '（自由出牌）',
+    waitFor: '等待 {name} 出牌', tribPhase: '进贡阶段', roundEnd: '本局结束', statusRound: '第 {r} 局 · 本局打', bothFrom2: '两队都从2开始',
+    teamLevel: '{team}的级', wilds: '♥{L}、♦{L} 是万能牌', orderLine: '{pos}：{name}（{team}）',
+    spectate: '你在观战。如果你是这桌的玩家、只是换了设备或浏览器，填好和之前一样的昵称，再点自己座位上的“这是我的座位”。',
+    store: '存储区', toStore: '放进存储区', unstore: '移回手牌', play: '出牌', clear: '清空选择', beatHint: '要管上 {name} 的{label} {key}',
+    leadHint: '你先出，任意合法牌型都可以', giveTo: '进贡给 {name}', handIn: '交出进贡牌', giveHint: '选一张你手里最大的牌（同样大的牌，花色随你挑）',
+    backTo: '还贡给 {name}', backHint: '选一张10或以下的牌还回去', waitTrib: '等待进贡和还贡完成…', doneWait: '你已经出完了，等队友',
+    notTurn: '还没轮到你，可以先理牌、选好牌', chooseHint: '这手牌有几种出法，选一种：', handTitle: '你的手牌（{n} 张）· 点牌或按住滑过多张牌来选中，再点一次取消',
+    aFails: '打A失败 {n}/3 次（满3次掉回2）', levels: '级数', resetTitle: '中途重置', resetText: '4个人都同意后，进度清零，回到选座大厅。目前 {n}/4 人同意。',
+    voteBtn: '申请重置', unvoteBtn: '取消我的申请', chat: '聊天', noChat: '还没有人说话', logT: '牌局记录', noLog: '还没有记录', sep: '：',
+    saved: '进度自动保存在房间里。下次用同一个浏览器打开就能接着打。', noDb: '还没连上数据库，请稍等', denied: '数据库拒绝写入：请检查 Firestore 规则',
+    failed: '操作失败，请重试', chatDenied: '聊天被数据库拒绝：请检查 Firestore 规则里有没有 chat 那一段', chatFail: '消息没发出去，请重试',
+    needNick: '请先在上面填写你的昵称', haveSeat: '你已经有座位了', nickMismatch: '昵称和这个座位不一致，请填和之前完全一样的昵称',
+    noConfig: '还没有填入 Firebase 配置：请把配置粘贴到 index.html 里。', noConn: '暂时连不上数据库，请检查网络后刷新页面。',
+    readFail: '读取牌桌失败（{c}）：请检查 Firestore 规则。', fbFail: '连接 Firebase 失败（{c}）：请检查配置和匿名登录是否已开启。',
+    emoTitle: '表情和快捷短语', emoAria: '发送表情 {e}', chatPh: '自己说点什么（最多20字）', send: '发送', seatFirst: '入座后才能发消息', tooFast: '发得太快了，歇一下',
+    coffeeLabel: '请喝一杯卡布奇诺 ☕', actTomato: '向 {name} 扔了一个番茄', actCoffee: '给 {name} 倒了一杯卡布奇诺', yourTurnTitle: '轮到你了 · ',
+    types: { single: '单张', pair: '对子', triple: '三张', full: '三带二', straight: '顺子', tube: '三连对', plate: '钢板', kings: '四王炸', bomb: '{n}张炸', sf: '同花顺', royal: '顶同' },
+    keyTo: '到{r}', and: '和',
+    phrases: ['快点出牌呀，等得我都饿了', '这把稳了！', '队友给力！', '我有炸，放心走', '先别炸，留着', '你走，我掩护', '要大牌，别给小的', '我要放大招了', '手气太差了……', '再来一盘！', '配合愉快，谢谢队友'],
+    err: { notSeated: '你还没有入座', inGameNoSwap: '游戏进行中，不能换座', seatTaken: '这个座位已经有人了', inGameNoLeave: '游戏进行中，不能离座', started: '游戏已经开始了',
+      needFour: '需要4个人坐满才能开始', notTribute: '现在不是进贡阶段', noTributeNeeded: '你不需要进贡', notInHand: '这张牌不在你手里', mustBeMax: '进贡必须是你手里最大的牌',
+      notReturn: '现在不是还贡阶段', noReturnYet: '现在还不需要你还贡', returnSmall: '还贡要还一张10或以下的牌', cantPlay: '现在不能出牌', notYourTurn: '还没轮到你',
+      playNotInHand: '出的牌不在你手里', cantBeat: '管不上，或者这不是有效的牌型', invalidType: '这不是有效的牌型', cantAct: '现在不能操作', mustLead: '你是先手，必须出牌',
+      roundNotOver: '这一局还没结束', noResetNeeded: '现在不需要重置' },
+    log: { start: '新的一盘开始，两队都从2打起', first: '第1局打2，{s} 拿到★红桃3，先出牌', round: '第{r}局：打{L}（{team}的级）', anti: '{givers} 手里有两张大王，抗贡！{lead} 先出牌',
+      inner: '上一局是头游加末游，这局内贡', trib: '{from} 向 {to} 进贡 {card}', tribOut: '{from} 交出进贡牌 {card}', tribTo: '{from} 的 {card} 给 {to}', ret: '{s} 还给 {to} {card}',
+      lead: '{s} 先出牌', out: '{s} 出完了，是{pos}', jiefeng: '{s} 接风', reset: '对局已重置，可以重新选座后开始', vote: '{s} 申请重置（{n}/4）', unvote: '{s} 取消了重置申请',
+      aDrop: '{team}连续3次打A没过，掉回2', aFail: '{team}打A没过（第{n}次）', win: '{team}过A，赢下整盘！', up: '{team}升{n}级：{lvFrom} → {lvTo}' },
+  },
+  en: {
+    title: 'Guandan · Play with Friends', h1: 'Guandan', sub: 'Online with friends · our house rules', room1: 'Room 1', room2: 'Room 2', inGame: 'in game', people: '{n}/4 seated',
+    nick: 'Your nickname', nickPh: 'e.g. James', nickHint: 'Fill this in before taking a seat', music: 'Music', sfx: 'Sound effects', voice: 'Voice calls (Chinese)', volAria: '{x} volume', connecting: 'Connecting to the table…',
+    langBtn: '中文', empty: 'Empty seat', player: 'Player', you: ' (you)', teams: ['Team A', 'Team B'], pos: ['1st out', '2nd out', '3rd out', 'Last out'],
+    bigJoker: 'Big Joker', smallJoker: 'Small Joker', jokerFace: ['JOKER', 'JOKER'], wildTag: 'W', wildAria: ' (wild)',
+    seatClick: 'Tap to sit', mySeat: 'Your seat', taken: 'Taken', lobbyHelp: 'Pick a seat. Partners on {A} and {B} sit across from each other.',
+    start: 'Start game', waitFour: 'Waiting for 4 players', leave: 'Leave seat', myCount: '{n} cards', left: '{n} left', claim: 'This is my seat',
+    tomatoAria: 'Throw a tomato at {name}', tomatoTitle: 'Throw a tomato', coffeeAria: 'Pour coffee for {name}', coffeeTitle: 'Pour coffee', thinking: 'Thinking…', pass: 'Pass',
+    tribRule: 'Two tribute cards: the higher goes to 1st out, the lower to 2nd out', tribPicking: 'choosing a tribute card', tribWaitRet: 'paid {card}, waiting for a card back', tribDone: 'paid {card}, card returned',
+    tribToEither: '1st or 2nd out', tribHanded: 'handed in {card}, waiting for the other tribute', tribPanel: 'Round {r} · Tribute', roundOver: 'Round {r} finished',
+    nextRound: 'Start next round', waitNext: 'Waiting for a player to start the next round', resetLobby: 'Reset and return to the lobby', yourTurn: 'Your turn', free: ' (free lead)',
+    waitFor: 'Waiting for {name}', tribPhase: 'Tribute', roundEnd: 'Round over', statusRound: 'Round {r} · Playing level', bothFrom2: 'both teams start at 2',
+    teamLevel: "{team}'s level", wilds: '♥{L} and ♦{L} are wild', orderLine: '{pos}: {name} ({team})',
+    spectate: "You're watching. If you're one of the players and just switched device or browser, enter the same nickname as before, then tap “This is my seat” on your seat.",
+    store: 'Storage', toStore: 'Move to storage', unstore: 'Back to hand', play: 'Play', clear: 'Clear selection', beatHint: "Beat {name}'s {label} {key}",
+    leadHint: 'You lead — any valid combination', giveTo: 'Pay tribute to {name}', handIn: 'Hand in tribute', giveHint: 'Pick your highest card (any suit if several are equally high)',
+    backTo: 'Return a card to {name}', backHint: 'Pick a card of 10 or lower to give back', waitTrib: 'Waiting for tribute to finish…', doneWait: "You're out — waiting for your partner",
+    notTurn: 'Not your turn yet — you can arrange and pre-select cards', chooseHint: 'These cards can be played in more than one way. Choose one:', handTitle: 'Your hand ({n} cards) · tap a card, or press and slide across several to select; tap again to deselect',
+    aFails: 'Failed at A {n}/3 times (3 failures → back to 2)', levels: 'Levels', resetTitle: 'Reset mid-match', resetText: 'When all 4 players agree, progress is cleared and everyone returns to the lobby. {n}/4 agreed so far.',
+    voteBtn: 'Request a reset', unvoteBtn: 'Withdraw my request', chat: 'Chat', noChat: 'No messages yet', logT: 'Game log', noLog: 'Nothing yet', sep: ': ',
+    saved: 'Progress is saved in the room automatically. Open the site in the same browser next time to carry on.', noDb: 'Not connected to the database yet — please wait', denied: 'The database refused the change — check the Firestore rules',
+    failed: 'Something went wrong — please try again', chatDenied: 'The database refused the chat message — check the chat section of the Firestore rules', chatFail: "Message didn't send — please try again",
+    needNick: 'Please enter your nickname above first', haveSeat: 'You already have a seat', nickMismatch: "That nickname doesn't match this seat — use exactly the same nickname as before",
+    noConfig: 'No Firebase config yet — paste it into index.html.', noConn: "Can't reach the database right now — check your connection and refresh the page.",
+    readFail: 'Could not read the table ({c}) — check the Firestore rules.', fbFail: 'Could not connect to Firebase ({c}) — check the config and that anonymous sign-in is enabled.',
+    emoTitle: 'Emotes and quick phrases', emoAria: 'Send emote {e}', chatPh: 'Say something (up to 20 characters)', send: 'Send', seatFirst: 'Take a seat to send messages', tooFast: 'Slow down a little',
+    coffeeLabel: 'Have a cappuccino ☕', actTomato: 'threw a tomato at {name}', actCoffee: 'poured {name} a cappuccino', yourTurnTitle: 'Your turn · ',
+    types: { single: 'Single', pair: 'Pair', triple: 'Triple', full: 'Full house', straight: 'Straight', tube: 'Three pairs', plate: 'Steel plate', kings: 'Four Jokers', bomb: '{n}-card bomb', sf: 'Straight flush', royal: 'Royal flush' },
+    keyTo: 'up to {r}', and: ' and ',
+    phrases: ["Hurry up, I'm getting hungry", "We've got this one!", 'Nice one, partner!', 'I have a bomb — go for it', "Don't bomb yet, save it", "You go, I'll cover you", 'Play high, not low', 'Big move incoming', 'My cards are awful…', 'One more match!', 'Great teamwork, thanks partner'],
+    err: { notSeated: "You haven't taken a seat", inGameNoSwap: "You can't change seats during a match", seatTaken: 'That seat is taken', inGameNoLeave: "You can't leave your seat during a match", started: 'The game has already started',
+      needFour: 'All 4 seats must be filled to start', notTribute: "It's not the tribute stage", noTributeNeeded: "You don't need to pay tribute", notInHand: "That card isn't in your hand", mustBeMax: 'Tribute must be your highest card',
+      notReturn: "It's not time to return a card", noReturnYet: "You don't need to return a card yet", returnSmall: 'The card you give back must be 10 or lower', cantPlay: "You can't play right now", notYourTurn: "It's not your turn",
+      playNotInHand: "Those cards aren't in your hand", cantBeat: "That doesn't beat the last play, or isn't a valid combination", invalidType: "That isn't a valid combination", cantAct: "You can't do that right now", mustLead: "You're leading, so you must play",
+      roundNotOver: "This round isn't over yet", noResetNeeded: 'No reset needed right now' },
+    log: { start: 'New match — both teams start at 2', first: 'Round 1 at level 2 — {s} has the ★3♥ and leads', round: "Round {r}: playing {L} ({team}'s level)", anti: '{givers} hold both Big Jokers — tribute resisted! {lead} leads',
+      inner: 'Last round finished 1st + last out — internal tribute this round', trib: '{from} pays {card} as tribute to {to}', tribOut: '{from} hands in {card} as tribute', tribTo: "{from}'s {card} goes to {to}", ret: '{s} gives {card} back to {to}',
+      lead: '{s} leads', out: '{s} is out — {pos}', jiefeng: "{s} takes the lead for their partner", reset: 'Match reset — pick seats and start again', vote: '{s} requested a reset ({n}/4)', unvote: '{s} withdrew their reset request',
+      aDrop: '{team} failed at A three times in a row — back to 2', aFail: '{team} failed at A (attempt {n})', win: '{team} passed A and won the match!', up: '{team} moves up {n}: {lvFrom} → {lvTo}' },
+  },
+};
+let lang = ls.get('gd-lang', /^zh/i.test(navigator.language || '') ? 'zh' : 'en');
+if (!I18N[lang]) lang = 'zh';
+const D = () => I18N[lang];
+// 纯文本：参数原样代入（放进 HTML 前要 esc）
+function T(key, p) { let s = D()[key]; if (s == null) return key; return p ? s.replace(/\{(\w+)\}/g, (m, k) => (p[k] != null ? p[k] : m)) : s; }
+const teamName = (t) => D().teams[t];
+const posName = (i) => D().pos[i];
+const rnameL = (r) => (r === 16 ? D().smallJoker : r === 17 ? D().bigJoker : G.rname(r));
+function cardNameL(id) { const c = G.card(id); return c.s === 'J' ? rnameL(c.r) : G.SUIT_CH[c.s] + G.rname(c.r); }
+function describeL(p) { const ty = D().types; if (p.type === 'bomb') return ty.bomb.replace('{n}', p.n); if (p.type === 'sf') return p.key === 14 ? ty.royal : ty.sf; return ty[p.type] || ''; }
+function keyNameL(p, L) {
+  if (p.type === 'kings') return '';
+  if (['straight', 'tube', 'plate', 'sf'].includes(p.type)) return D().keyTo.replace('{r}', G.rname(p.key));
+  return p.key === 15 ? G.rname(L) : rnameL(p.key);
+}
+const trickLabel = (tk) => (tk.type ? describeL(tk) : tk.label || '');
+// 牌局记录：结构化条目按当前语言显示；旧版本存下的中文句子原样显示
+const SEATKEYS = ['s', 'to', 'from', 'lead'];
+function logHTML(st, e) {
+  if (typeof e === 'string') return fmt(st, e);
+  const tpl = D().log[e.k];
+  if (!tpl) return '';
+  return esc(tpl).replace(/\{(\w+)\}/g, (m, k) => {
+    const v = e[k];
+    if (v == null) return m;
+    if (SEATKEYS.includes(k)) return '<b>' + esc(seatName(st, v)) + '</b>';
+    if (k === 'givers') return v.map((s) => '<b>' + esc(seatName(st, s)) + '</b>').join(esc(D().and));
+    if (k === 'card') return esc(cardNameL(v));
+    if (k === 'team') return esc(teamName(v));
+    if (k === 'pos') return esc(posName(v));
+    if (k === 'L' || k === 'lvFrom' || k === 'lvTo') return esc(G.rname(v));
+    return esc(v);
+  });
+}
+function errText(e) { return (e && e.code && D().err[e.code]) || (e && e.message) || T('failed'); }
+function applyStatic() {
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en-CA';
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = T(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach((el) => { el.placeholder = T(el.dataset.i18nPh); });
+  document.querySelectorAll('[data-vol]').forEach((el) => { el.setAttribute('aria-label', T('volAria', { x: T(el.dataset.vol) })); });
+  if (typeof uid !== 'undefined' && uid) buildChat();
+}
+
 const cur = () => states[room] || G.fresh();
 function toast(m) { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 3200); }
-function seatName(st, s) { const u = st.seats[s]; if (!u) return '空座'; return ((st.names && st.names[u]) || '玩家') + (u === uid ? '（你）' : ''); }
+function rawName(st, s) { const u = st.seats[s]; return u ? (st.names && st.names[u]) || '' : ''; }
+function seatName(st, s) { const u = st.seats[s]; if (!u) return T('empty'); return (rawName(st, s) || T('player')) + (u === uid ? T('you') : ''); }
 const fmt = (st, m) => esc(m).replace(/@(\d)/g, (_, s) => '<b>' + esc(seatName(st, +s)) + '</b>');
 
 // ================= 声音：背景音乐、音效、语音报牌 =================
@@ -729,7 +857,7 @@ function handleEvent(r, st) {
   else {
     sfx(ev.type === 'bomb' || ev.type === 'sf' || ev.type === 'kings' ? 'bomb' : 'card');
     let text = spokenPlay(ev);
-    if (ev.fin >= 0) text += '。' + seatName(st, ev.seat).replace('（你）', '') + '出完了，' + G.POS[ev.fin];
+    if (ev.fin >= 0) text += '。' + (rawName(st, ev.seat) || '玩家') + '出完了，' + G.POS[ev.fin];
     say(text);
   }
   const me = st.seats.indexOf(uid);
@@ -776,13 +904,13 @@ function setGroups(gs) { ls.set(storeKey(), gs.filter((g) => g.length)); }
 
 // ================= 聊天与表情 =================
 const EMOTES = ['😂', '👍', '😎', '😭', '😡', '🤔', '🎉', '💣', '🙏', '😴'];
-const PHRASES = ['快点出牌呀，等得我都饿了', '这把稳了！', '队友给力！', '我有炸，放心走', '先别炸，留着', '你走，我掩护', '要大牌，别给小的', '我要放大招了', '手气太差了……', '再来一盘！', '配合愉快，谢谢队友'];
 const chats = { r1: [], r2: [] }, chatInit = { r1: false, r2: false }, seen = new Set(), bubbles = {};
 let lastSend = 0;
 function bubbleHTML(s) {
   const b = bubbles[room + ':' + s];
   if (!b || b.until < Date.now()) return '';
-  return `<div class="bubble ${b.kind === 'emo' ? 'emo' : ''}">${esc(b.text)}</div>`;
+  const text = b.p != null && D().phrases[b.p] ? D().phrases[b.p] : b.text;
+  return `<div class="bubble ${b.kind === 'emo' ? 'emo' : ''}">${esc(text)}</div>`;
 }
 function onChat(r, list) {
   let fresh = false;
@@ -791,7 +919,7 @@ function onChat(r, list) {
     seen.add(m.id);
     if (!chatInit[r]) continue;
     if (m.kind === 'act') { if (r === room) setTimeout(() => throwFx(m.item, m.seat, m.to), 0); continue; }
-    bubbles[r + ':' + m.seat] = { kind: m.kind, text: m.text, until: Date.now() + 4000 }; setTimeout(render, 4100); if (r === room) fresh = true;
+    bubbles[r + ':' + m.seat] = { kind: m.kind, text: m.text, p: m.p, until: Date.now() + 4000 }; setTimeout(render, 4100); if (r === room) fresh = true;
   }
   chatInit[r] = true;
   chats[r] = list;
@@ -799,18 +927,20 @@ function onChat(r, list) {
   render();
 }
 function buildChat() {
-  $('#chatpanel').innerHTML = `<h4>表情和快捷短语</h4>
-    <div class="emos">${EMOTES.map((e) => `<button type="button" data-act="emo" data-v="${e}" aria-label="发送表情 ${e}">${e}</button>`).join('')}</div>
-    <div class="says">${PHRASES.map((p, i) => `<button type="button" data-act="say" data-v="${i}">${esc(p)}</button>`).join('')}</div>
-    <form class="chatin" id="chatform"><input id="chatIn" maxlength="20" placeholder="自己说点什么（最多20字）" autocomplete="off"><button class="btn sec" type="submit">发送</button></form>`;
+  const keep = $('#chatIn') ? $('#chatIn').value : '';
+  $('#chatpanel').innerHTML = `<h4>${esc(T('emoTitle'))}</h4>
+    <div class="emos">${EMOTES.map((e) => `<button type="button" data-act="emo" data-v="${e}" aria-label="${esc(T('emoAria', { e }))}">${e}</button>`).join('')}</div>
+    <div class="says">${D().phrases.map((p, i) => `<button type="button" data-act="say" data-v="${i}">${esc(p)}</button>`).join('')}</div>
+    <form class="chatin" id="chatform"><input id="chatIn" maxlength="20" placeholder="${esc(T('chatPh'))}" autocomplete="off" value="${esc(keep)}"><button class="btn sec" type="submit">${esc(T('send'))}</button></form>`;
   $('#chatform').addEventListener('submit', (e) => { e.preventDefault(); const v = $('#chatIn').value.trim(); if (v && sendChat('text', v)) $('#chatIn').value = ''; });
 }
-function sendChat(kind, text) {
+function sendChat(kind, text, p) {
   const me = cur().seats.indexOf(uid);
-  if (me < 0) { toast('入座后才能发消息'); return false; }
-  if (Date.now() - lastSend < 1500) { toast('发得太快了，歇一下'); return false; }
+  if (me < 0) { toast(T('seatFirst')); return false; }
+  if (Date.now() - lastSend < 1500) { toast(T('tooFast')); return false; }
   lastSend = Date.now();
   const m = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), seat: me, kind, text: String(text).slice(0, 20), name: nick.trim() };
+  if (p != null) m.p = p;
   chatWrite(room, (list) => list.concat([m]).slice(-30));
   return true;
 }
@@ -826,9 +956,9 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 function sendThrow(item, to) {
   const st = cur(), me = st.seats.indexOf(uid);
   if (me < 0 || to === me) return;
-  if (Date.now() - lastSend < 1500) { toast('手速太快了，歇一下'); return; }
+  if (Date.now() - lastSend < 1500) { toast(T('tooFast')); return; }
   lastSend = Date.now();
-  const who = seatName(st, to).replace('（你）', '');
+  const who = rawName(st, to) || '玩家';
   const text = item === 'tomato' ? `向 ${who} 扔了一个番茄` : `给 ${who} 倒了一杯卡布奇诺`;
   const m = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), seat: me, to, kind: 'act', item, text, name: nick.trim() };
   chatWrite(room, (list) => list.concat([m]).slice(-30));
@@ -876,7 +1006,7 @@ function throwFx(item, from, to) {
         setTimeout(() => {
           const sn = fxEl(SVG.stain, x1 - 60, y1 - 50);
           sn.animate([{ transform: `translate(${x1 - 60}px,${y1 - 50}px) scale(.3)`, opacity: 0.9 }, { transform: `translate(${x1 - 60}px,${y1 - 50}px) scale(1)`, opacity: 1, offset: 0.1 }, { transform: `translate(${x1 - 60}px,${y1 - 50}px) scale(1)`, opacity: 1, offset: 0.7 }, { transform: `translate(${x1 - 60}px,${y1 - 50}px) scale(1)`, opacity: 0 }], { duration: 3200, fill: 'forwards' }).onfinish = () => sn.remove();
-          const lb = document.createElement('div'); lb.className = 'fxlabel'; lb.textContent = '请喝一杯卡布奇诺 ☕';
+          const lb = document.createElement('div'); lb.className = 'fxlabel'; lb.textContent = T('coffeeLabel');
           document.body.appendChild(lb);
           const w = lb.offsetWidth;
           lb.style.left = Math.max(8, Math.min(innerWidth - w - 8, x1 - w / 2)) + 'px'; lb.style.top = Math.max(8, rb.top - 40) + 'px';
@@ -898,28 +1028,28 @@ function cardEl(id, L, cls = '', mark = false, btn = false) {
   const red = c.s === 'H' || c.s === 'D' || c.r === 17;
   const tag = btn ? 'button' : 'span';
   const attr = btn ? ` type="button" data-id="${id}" aria-pressed="${cls.includes('up')}"` : '';
-  if (c.s === 'J') return `<${tag} class="cd joker ${red ? 'red' : ''} ${cls}"${attr}><b>${c.r === 17 ? '大王' : '小王'}</b></${tag}>`;
+  if (c.s === 'J') return `<${tag} class="cd joker ${red ? 'red' : ''} ${cls}"${attr} aria-label="${esc(cardNameL(id))}"><b>${esc(D().jokerFace[c.r - 16])}</b></${tag}>`;
   const wild = L && G.isWild(c, L);
-  return `<${tag} class="cd ${red ? 'red' : ''} ${wild ? 'wild' : ''} ${cls}"${attr} aria-label="${G.cardName(id)}${wild ? ' 万能牌' : ''}"><b>${G.rname(c.r)}</b><i>${G.SUIT_CH[c.s]}</i>${wild ? '<em>配</em>' : ''}${mark && id === G.MARKED ? '<u>★</u>' : ''}</${tag}>`;
+  return `<${tag} class="cd ${red ? 'red' : ''} ${wild ? 'wild' : ''} ${cls}"${attr} aria-label="${esc(cardNameL(id) + (wild ? D().wildAria : ''))}"><b>${G.rname(c.r)}</b><i>${G.SUIT_CH[c.s]}</i>${wild ? `<em>${D().wildTag}</em>` : ''}${mark && id === G.MARKED ? '<u>★</u>' : ''}</${tag}>`;
 }
 const mini = (ids, L, mark) => `<div class="mini">${ids.map((i) => cardEl(i, L, '', mark)).join('')}</div>`;
 
 function render() {
   const st = cur();
-  document.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-pressed', b.dataset.r === room));
+  document.querySelectorAll('.tab[data-r]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.r === room));
   for (const r of ['r1', 'r2']) {
     const s = states[r], n = s ? s.seats.filter(Boolean).length : 0;
-    $('#c' + r[1]).textContent = s && s.phase !== 'lobby' ? '对局中' : n + '/4人';
+    $('#c' + r[1]).textContent = s && s.phase !== 'lobby' ? T('inGame') : T('people', { n });
   }
   renderSnd();
-  if (fatal) { $('#stage').innerHTML = `<div class="note">${esc(fatal)}</div>`; $('#side').innerHTML = ''; return; }
+  if (fatal) { $('#stage').innerHTML = `<div class="note">${esc(T(fatal.k, fatal.p))}</div>`; $('#side').innerHTML = ''; return; }
   if (!ready) return;
   const me = st.seats.indexOf(uid);
   $('#stage').innerHTML = st.phase === 'lobby' ? lobbyHTML(st, me) : gameHTML(st, me);
   $('#side').innerHTML = sideHTML(st, me);
   $('#chatpanel').hidden = me < 0;
   const myTurn = st.g && st.g.turn === me && me >= 0 && st.phase === 'play';
-  document.title = (myTurn ? '轮到你了 · ' : '') + '掼蛋 · 好友联机';
+  document.title = (myTurn ? T('yourTurnTitle') : '') + T('title');
   syncMusic();
 }
 
@@ -928,60 +1058,63 @@ function lobbyHTML(st, me) {
   const seats = [0, 1, 2, 3].map((i) => {
     const u = st.seats[i];
     return `<button class="seat t${i % 2} ${u ? 'taken' : ''} ${u === uid ? 'me' : ''}" style="grid-area:s${i}" data-act="sit" data-i="${i}" ${u && u !== uid ? 'disabled' : ''}>
-      <span class="tg t${i % 2}">${G.TEAM[i % 2]}</span>${u ? esc(seatName(st, i)) : '空座'}<small>${u ? (u === uid ? '这是你的座位' : '已入座') : '点击坐下'}</small></button>`;
+      <span class="tg t${i % 2}">${esc(teamName(i % 2))}</span>${esc(seatName(st, i))}<small>${esc(u ? (u === uid ? T('mySeat') : T('taken')) : T('seatClick'))}</small></button>`;
   }).join('');
+  const help = esc(T('lobbyHelp')).replace('{A}', `<b style="color:var(--a)">${esc(teamName(0))}</b>`).replace('{B}', `<b style="color:var(--b)">${esc(teamName(1))}</b>`);
   return `<div class="felt lobby">${seats}
     <div class="info">
-      <div class="lv">${room === 'r1' ? '1号房间' : '2号房间'}</div>
-      <p>选一个座位坐下。<b style="color:var(--a)">A队</b>和<b style="color:var(--b)">B队</b>的两个人各自坐对家。</p>
-      <button class="btn" data-act="start" ${full && me >= 0 ? '' : 'disabled'}>${full ? '开始游戏' : '等待4人坐满'}</button>
-      ${me >= 0 ? '<button class="btn ghost" data-act="leave">离开座位</button>' : ''}
+      <div class="lv">${esc(T(room === 'r1' ? 'room1' : 'room2'))}</div>
+      <p>${help}</p>
+      <button class="btn" data-act="start" ${full && me >= 0 ? '' : 'disabled'}>${esc(full ? T('start') : T('waitFour'))}</button>
+      ${me >= 0 ? `<button class="btn ghost" data-act="leave">${esc(T('leave'))}</button>` : ''}
     </div></div>`;
 }
 
 function countHTML(st, s, me) {
   const g = st.g, di = g.done.indexOf(s);
-  if (di >= 0) return `<span class="badge">${G.POS[di]}</span>`;
+  if (di >= 0) return `<span class="badge">${esc(posName(di))}</span>`;
   const n = g.hands[s].length;
-  if (s === me) return `${n} 张`;
-  return n <= 10 ? `<span class="warn">剩 ${n} 张</span>` : '';
+  if (s === me) return esc(T('myCount', { n }));
+  return n <= 10 ? `<span class="warn">${esc(T('left', { n }))}</span>` : '';
 }
 function playerHTML(st, s, pos, me) {
   const g = st.g, t = G.team(s);
   const turn = g.turn === s && st.phase === 'play';
-  const claim = me < 0 && uid ? `<button class="btn ghost small" data-act="claim" data-i="${s}">这是我的座位</button>` : '';
-  const acts = me >= 0 && s !== me ? `<div class="acts"><button type="button" data-act="throw" data-item="tomato" data-to="${s}" aria-label="向${esc(seatName(st, s))}扔番茄" title="扔番茄">🍅</button><button type="button" data-act="throw" data-item="coffee" data-to="${s}" aria-label="给${esc(seatName(st, s))}倒咖啡" title="倒咖啡">☕</button></div>` : '';
-  return `<div class="pl pos-${pos} ${turn ? 'turn' : ''}" data-seat="${s}">${bubbleHTML(s)}<div class="nm">${esc(seatName(st, s))}<span class="tg t${t}">${G.TEAM[t]}</span></div><div class="meta">${countHTML(st, s, me)}</div>${acts}${claim}</div>`;
+  const name = seatName(st, s);
+  const claim = me < 0 && uid ? `<button class="btn ghost small" data-act="claim" data-i="${s}">${esc(T('claim'))}</button>` : '';
+  const acts = me >= 0 && s !== me ? `<div class="acts"><button type="button" data-act="throw" data-item="tomato" data-to="${s}" aria-label="${esc(T('tomatoAria', { name }))}" title="${esc(T('tomatoTitle'))}">🍅</button><button type="button" data-act="throw" data-item="coffee" data-to="${s}" aria-label="${esc(T('coffeeAria', { name }))}" title="${esc(T('coffeeTitle'))}">☕</button></div>` : '';
+  return `<div class="pl pos-${pos} ${turn ? 'turn' : ''}" data-seat="${s}">${bubbleHTML(s)}<div class="nm">${esc(name)}<span class="tg t${t}">${esc(teamName(t))}</span></div><div class="meta">${countHTML(st, s, me)}</div>${acts}${claim}</div>`;
 }
 function slotHTML(st, s, pos) {
   const g = st.g, tk = g.trick[s];
   const turn = g.turn === s && st.phase === 'play';
   let inner = '';
-  if (turn) inner = '<div class="think">出牌中…</div>';
-  else if (tk) inner = tk.pass ? '<div class="ps">不出</div>' : mini(tk.ids, g.L, st.round === 1) + `<small>${esc(tk.label)}</small>`;
+  if (turn) inner = `<div class="think">${esc(T('thinking'))}</div>`;
+  else if (tk) inner = tk.pass ? `<div class="ps">${esc(T('pass'))}</div>` : mini(tk.ids, g.L, st.round === 1) + `<small>${esc(trickLabel(tk))}</small>`;
   const old = !g.last && !turn ? 'old' : '';
   return `<div class="slot s-${pos} ${old}">${inner}</div>`;
 }
 function panelHTML(st, me) {
   const g = st.g;
   if (st.phase === 'tribute') {
-    const rule = g.recv ? '<div class="lvl">两张进贡牌：大的给头游，小的给二游</div>' : '';
+    const rule = g.recv ? `<div class="lvl">${esc(T('tribRule'))}</div>` : '';
     const lines = g.trib.map((t) => {
-      const a = t.id == null ? '正在挑选进贡的牌' : t.ret == null ? `进贡了 ${G.cardName(t.id)}，等待还贡` : `进贡 ${G.cardName(t.id)}，已收到还贡`;
-      const to = t.to != null ? `@${t.to}` : '头游或二游';
-      const a2 = t.to == null && t.id != null ? `交出了 ${G.cardName(t.id)}，等另一张进贡牌` : a;
-      return `<li>${fmt(st, `@${t.from} → ${to}：`)}${esc(a2)}</li>`;
+      const card = t.id != null ? cardNameL(t.id) : '';
+      let a = t.id == null ? T('tribPicking') : t.ret == null ? T('tribWaitRet', { card }) : T('tribDone', { card });
+      if (t.to == null && t.id != null) a = T('tribHanded', { card });
+      const to = t.to != null ? `<b>${esc(seatName(st, t.to))}</b>` : esc(T('tribToEither'));
+      return `<li><b>${esc(seatName(st, t.from))}</b> → ${to}${esc(D().sep)}${esc(a)}</li>`;
     }).join('');
-    return `<div class="panel"><div class="lvl">第 ${st.round} 局 · 进贡与还贡</div><div class="lv">${G.rname(g.L)}</div>${rule}<ul class="res">${lines}</ul></div>`;
+    return `<div class="panel"><div class="lvl">${esc(T('tribPanel', { r: st.round }))}</div><div class="lv">${G.rname(g.L)}</div>${rule}<ul class="res">${lines}</ul></div>`;
   }
   if (st.phase === 'roundEnd' || st.phase === 'matchEnd') {
     const p = st.prev;
-    const list = p.order.map((s, i) => `<li>${G.POS[i]}：<b>${esc(seatName(st, s))}</b>（${G.TEAM[G.team(s)]}）</li>`).join('');
-    const notes = p.notes.map((n) => `<div class="big">${esc(n)}</div>`).join('');
+    const list = p.order.map((s, i) => `<li>${esc(T('orderLine', { pos: posName(i), name: '\u0000', team: teamName(G.team(s)) })).replace('\u0000', `<b>${esc(seatName(st, s))}</b>`)}</li>`).join('');
+    const notes = p.notes.map((n) => `<div class="big">${logHTML(st, n)}</div>`).join('');
     const btn = st.phase === 'roundEnd'
-      ? (me >= 0 ? '<button class="btn" data-act="next" style="pointer-events:auto">开始下一局</button>' : '<div class="lvl">等待玩家开始下一局</div>')
-      : (me >= 0 ? '<button class="btn" data-act="reset" style="pointer-events:auto">重置，回到选座大厅</button>' : '');
-    return `<div class="panel"><div class="lvl">第 ${st.round} 局结束</div><ul class="res">${list}</ul>${notes}${btn}</div>`;
+      ? (me >= 0 ? `<button class="btn" data-act="next" style="pointer-events:auto">${esc(T('nextRound'))}</button>` : `<div class="lvl">${esc(T('waitNext'))}</div>`)
+      : (me >= 0 ? `<button class="btn" data-act="reset" style="pointer-events:auto">${esc(T('resetLobby'))}</button>` : '');
+    return `<div class="panel"><div class="lvl">${esc(T('roundOver', { r: st.round }))}</div><ul class="res">${list}</ul>${notes}${btn}</div>`;
   }
   return `<div class="center"><div class="lv">${G.rname(g.L)}</div></div>`;
 }
@@ -992,12 +1125,13 @@ function gameHTML(st, me) {
   const pos = ['bot', 'right', 'top', 'left'];
   const seats = [0, 1, 2, 3].map((k) => (base + k) % 4);
   let turnMsg = '';
-  if (st.phase === 'play') turnMsg = g.turn === me ? '轮到你出牌' + (g.last ? '' : '（自由出牌）') : `等待 ${esc(seatName(st, g.turn))} 出牌`;
-  else if (st.phase === 'tribute') turnMsg = '进贡阶段';
-  else turnMsg = '本局结束';
-  const status = `<div class="status"><span>第 ${st.round} 局 · 本局打</span><span class="lvbig">${G.rname(g.L)}</span><span>${g.lt < 0 ? '两队都从2开始' : G.TEAM[g.lt] + '的级'} · ♥${G.rname(g.L)}、♦${G.rname(g.L)} 是万能牌</span><span class="turnmsg">${turnMsg}</span></div>`;
+  if (st.phase === 'play') turnMsg = g.turn === me ? T('yourTurn') + (g.last ? '' : T('free')) : T('waitFor', { name: seatName(st, g.turn) });
+  else if (st.phase === 'tribute') turnMsg = T('tribPhase');
+  else turnMsg = T('roundEnd');
+  const L = G.rname(g.L);
+  const status = `<div class="status"><span>${esc(T('statusRound', { r: st.round }))}</span><span class="lvbig">${L}</span><span>${esc(g.lt < 0 ? T('bothFrom2') : T('teamLevel', { team: teamName(g.lt) }))} · ${esc(T('wilds', { L }))}</span><span class="turnmsg">${esc(turnMsg)}</span></div>`;
   const table = `<div class="felt table">${seats.map((s, k) => playerHTML(st, s, pos[k], me)).join('')}<div class="mid">${seats.map((s, k) => slotHTML(st, s, pos[k])).join('')}${panelHTML(st, me)}</div></div>`;
-  if (me < 0) return status + table + `<div class="handwrap"><span class="small">你在观战。如果你是这桌的玩家、只是换了设备或浏览器，填好和之前一样的昵称，再点自己座位上的“这是我的座位”。</span></div>`;
+  if (me < 0) return status + table + `<div class="handwrap"><span class="small">${esc(T('spectate'))}</span></div>`;
   return status + table + handHTML(st, me);
 }
 
@@ -1008,41 +1142,47 @@ function handHTML(st, me) {
   const main = G.sortHand(hand.filter((id) => !inG.has(id)), g.L);
   const mark = st.round === 1;
   const ce = (id) => cardEl(id, g.L, (sel.has(id) ? 'up ' : '') + (drag && drag.ids.has(id) ? 'sweep' : ''), mark, true);
-  const store = groups.length ? `<div class="store"><span class="lab">存储区</span>${groups.map((gr) => `<div class="grp">${gr.map(ce).join('')}</div>`).join('')}</div>` : '';
+  const store = groups.length ? `<div class="store"><span class="lab">${esc(T('store'))}</span>${groups.map((gr) => `<div class="grp">${gr.map(ce).join('')}</div>`).join('')}</div>` : '';
   const selInStore = [...sel].some((id) => inG.has(id));
-  const arrange = `<button class="btn sec" data-act="tostore" ${sel.size ? '' : 'disabled'}>放进存储区</button>${selInStore ? '<button class="btn sec" data-act="unstore">移回手牌</button>' : ''}`;
+  const arrange = `<button class="btn sec" data-act="tostore" ${sel.size ? '' : 'disabled'}>${esc(T('toStore'))}</button>${selInStore ? `<button class="btn sec" data-act="unstore">${esc(T('unstore'))}</button>` : ''}`;
+  const clear = `<button class="btn sec" data-act="clear" ${sel.size ? '' : 'disabled'}>${esc(T('clear'))}</button>`;
   let ctrl = '';
   if (st.phase === 'play' && g.turn === me) {
-    ctrl = `<button class="btn" data-act="play" ${sel.size ? '' : 'disabled'}>出牌</button>
-      <button class="btn sec" data-act="pass" ${g.last ? '' : 'disabled'}>不出</button>
-      <button class="btn sec" data-act="clear" ${sel.size ? '' : 'disabled'}>清空选择</button>${arrange}
-      <span class="hint">${g.last ? '要管上 ' + esc(seatName(st, g.last.seat)) + ' 的' + esc(g.trick[g.last.seat].label) + ' ' + esc(G.keyName(g.last, g.L)) : '你先出，任意合法牌型都可以'}</span>`;
+    const hint = g.last ? T('beatHint', { name: seatName(st, g.last.seat), label: trickLabel(g.trick[g.last.seat] || g.last), key: keyNameL(g.last, g.L) }) : T('leadHint');
+    ctrl = `<button class="btn" data-act="play" ${sel.size ? '' : 'disabled'}>${esc(T('play'))}</button>
+      <button class="btn sec" data-act="pass" ${g.last ? '' : 'disabled'}>${esc(T('pass'))}</button>${clear}${arrange}<span class="hint">${esc(hint)}</span>`;
   } else if (st.phase === 'tribute') {
     const give = g.trib.find((x) => x.from === me && x.id == null);
     const back = g.trib.find((x) => x.to === me && x.to != null && x.id != null && x.ret == null);
-    if (give) ctrl = `<button class="btn" data-act="tribute" ${sel.size === 1 ? '' : 'disabled'}>${give.to != null ? '进贡给 ' + esc(seatName(st, give.to)) : '交出进贡牌'}</button><span class="hint">选一张你手里最大的牌（同样大的牌，花色随你挑）</span>`;
-    else if (back) ctrl = `<button class="btn" data-act="back" ${sel.size === 1 ? '' : 'disabled'}>还贡给 ${esc(seatName(st, back.from))}</button><span class="hint">选一张10或以下的牌还回去</span>`;
-    else ctrl = '<span class="hint">等待进贡和还贡完成…</span>';
+    if (give) ctrl = `<button class="btn" data-act="tribute" ${sel.size === 1 ? '' : 'disabled'}>${esc(give.to != null ? T('giveTo', { name: seatName(st, give.to) }) : T('handIn'))}</button><span class="hint">${esc(T('giveHint'))}</span>`;
+    else if (back) ctrl = `<button class="btn" data-act="back" ${sel.size === 1 ? '' : 'disabled'}>${esc(T('backTo', { name: seatName(st, back.from) }))}</button><span class="hint">${esc(T('backHint'))}</span>`;
+    else ctrl = `<span class="hint">${esc(T('waitTrib'))}</span>`;
   } else if (st.phase === 'play') {
-    ctrl = `<button class="btn sec" data-act="clear" ${sel.size ? '' : 'disabled'}>清空选择</button>${arrange}<span class="hint">${g.done.includes(me) ? '你已经出完了，等队友' : '还没轮到你，可以先理牌、选好牌'}</span>`;
+    ctrl = `${clear}${arrange}<span class="hint">${esc(g.done.includes(me) ? T('doneWait') : T('notTurn'))}</span>`;
   } else ctrl = arrange;
-  const ch = choice ? `<div class="choose"><span class="hint">这手牌有几种出法，选一种：</span>${choice.map((o) => `<button class="btn sec" data-act="playas" data-t="${o.type}">${G.describe(o)} ${esc(G.keyName(o, g.L))}</button>`).join('')}</div>` : '';
-  return `<div class="handwrap"><div class="small">你的手牌（${hand.length} 张）· 点牌或按住滑过多张牌来选中，再点一次取消</div><div class="hand">${main.map(ce).join('')}</div>${store}<div class="ctrl">${ctrl}</div>${ch}</div>`;
+  const ch = choice ? `<div class="choose"><span class="hint">${esc(T('chooseHint'))}</span>${choice.map((o) => `<button class="btn sec" data-act="playas" data-t="${o.type}">${esc(describeL(o) + ' ' + keyNameL(o, g.L))}</button>`).join('')}</div>` : '';
+  return `<div class="handwrap"><div class="small">${esc(T('handTitle', { n: hand.length }))}</div><div class="hand">${main.map(ce).join('')}</div>${store}<div class="ctrl">${ctrl}</div>${ch}</div>`;
 }
 
+function chatLine(st, m) {
+  let text = m.text;
+  if (m.kind === 'act') text = T(m.item === 'tomato' ? 'actTomato' : 'actCoffee', { name: m.to != null ? seatName(st, m.to).replace(D().you, '') : '' });
+  else if (m.p != null && D().phrases[m.p]) text = D().phrases[m.p];
+  return `<li><b>${esc(m.name || seatName(st, m.seat))}</b>${esc(D().sep)}${esc(text)}</li>`;
+}
 function sideHTML(st, me) {
-  const teams = [0, 1].map((t) => `<div class="team"><span class="tg t${t}">${G.TEAM[t]}</span><span class="who">${esc(seatName(st, t))}<br>${esc(seatName(st, t + 2))}</span><span class="lvn">${G.rname(st.levels[t])}</span></div>
-     ${st.levels[t] === 14 && st.aFails[t] ? `<div class="small">打A失败 ${st.aFails[t]}/3 次（满3次掉回2）</div>` : ''}`).join('');
+  const teams = [0, 1].map((t) => `<div class="team"><span class="tg t${t}">${esc(teamName(t))}</span><span class="who">${esc(seatName(st, t))}<br>${esc(seatName(st, t + 2))}</span><span class="lvn">${G.rname(st.levels[t])}</span></div>
+     ${st.levels[t] === 14 && st.aFails[t] ? `<div class="small">${esc(T('aFails', { n: st.aFails[t] }))}</div>` : ''}`).join('');
   let reset = '';
   if (st.phase !== 'lobby' && st.phase !== 'matchEnd' && me >= 0) {
     const voted = (st.votes || []).includes(uid);
-    reset = `<div class="card"><h3>中途重置</h3><p class="small" style="margin:0 0 10px">4个人都同意后，进度清零，回到选座大厅。目前 ${(st.votes || []).length}/4 人同意。</p>
-      <button class="btn sec" data-act="${voted ? 'unvote' : 'vote'}">${voted ? '取消我的申请' : '申请重置'}</button></div>`;
+    reset = `<div class="card"><h3>${esc(T('resetTitle'))}</h3><p class="small" style="margin:0 0 10px">${esc(T('resetText', { n: (st.votes || []).length }))}</p>
+      <button class="btn sec" data-act="${voted ? 'unvote' : 'vote'}">${esc(voted ? T('unvoteBtn') : T('voteBtn'))}</button></div>`;
   }
-  const chat = chats[room].slice(-8).reverse().map((m) => `<li><b>${esc(m.name || seatName(st, m.seat))}</b>：${esc(m.text)}</li>`).join('');
-  const logs = st.log.slice(-14).reverse().map((m) => `<li>${fmt(st, m)}</li>`).join('');
-  return `<div class="card"><h3>级数</h3>${teams}</div>${reset}<div class="card"><h3>聊天</h3><ul class="log">${chat || '<li class="small">还没有人说话</li>'}</ul></div><div class="card"><h3>牌局记录</h3><ul class="log">${logs || '<li class="small">还没有记录</li>'}</ul></div>
-   <div class="card small">进度自动保存在房间里。下次用同一个浏览器打开就能接着打。</div>`;
+  const chat = chats[room].slice(-8).reverse().map((m) => chatLine(st, m)).join('');
+  const logs = st.log.slice(-14).reverse().map((m) => `<li>${logHTML(st, m)}</li>`).join('');
+  return `<div class="card"><h3>${esc(T('levels'))}</h3>${teams}</div>${reset}<div class="card"><h3>${esc(T('chat'))}</h3><ul class="log">${chat || `<li class="small">${esc(T('noChat'))}</li>`}</ul></div><div class="card"><h3>${esc(T('logT'))}</h3><ul class="log">${logs || `<li class="small">${esc(T('noLog'))}</li>`}</ul></div>
+   <div class="card small">${esc(T('saved'))}</div>`;
 }
 
 // ================= 数据读写 =================
@@ -1054,19 +1194,19 @@ async function txWrite(col, r, fn) {
   });
 }
 async function mutate(fn) {
-  if (!db || !uid) { toast('还没连上数据库，请稍等'); return; }
+  if (!db || !uid) { toast(T('noDb')); return; }
   try {
     await txWrite('rooms', room, (st0) => { const st = st0 || G.fresh(); const v = st.v || 0; const next = fn(st); next.v = v + 1; return next; });
     return true;
   } catch (e) {
-    toast(e && e.code === 'permission-denied' ? '数据库拒绝写入：请检查 Firestore 规则' : (e && e.message) || '操作失败，请重试');
+    toast(e && e.code === 'permission-denied' ? T('denied') : errText(e));
   }
 }
 async function chatWrite(r, fn) {
   try { await txWrite('chat', r, (l) => fn(l || [])); }
-  catch (e) { toast(e && e.code === 'permission-denied' ? '聊天被数据库拒绝：请检查 Firestore 规则里有没有 chat 那一段' : '消息没发出去，请重试'); }
+  catch (e) { toast(e && e.code === 'permission-denied' ? T('chatDenied') : T('chatFail')); }
 }
-function needNick() { if (!nick.trim()) { toast('请先在上面填写你的昵称'); $('#nick').focus(); return false; } return true; }
+function needNick() { if (!nick.trim()) { toast(T('needNick')); $('#nick').focus(); return false; } return true; }
 function withName(s) { s.names = s.names || {}; s.names[uid] = nick.trim(); return s; }
 
 function onState() {
@@ -1115,9 +1255,10 @@ document.addEventListener('click', async (e) => {
   const a = t.dataset.act;
   const st = cur(), me = st.seats.indexOf(uid);
   if (a === 'snd') { opt[t.dataset.k] = !opt[t.dataset.k]; ls.set('gd-snd', opt); lobby.on = undefined; if (!opt.voice && 'speechSynthesis' in window) speechSynthesis.cancel(); render(); return; }
+  if (a === 'lang') { lang = lang === 'zh' ? 'en' : 'zh'; ls.set('gd-lang', lang); applyStatic(); render(); return; }
   if (a === 'emo') { sendChat('emo', t.dataset.v); return; }
   if (a === 'throw') { sendThrow(t.dataset.item, +t.dataset.to); return; }
-  if (a === 'say') { sendChat('text', PHRASES[+t.dataset.v]); return; }
+  if (a === 'say') { sendChat('text', I18N.zh.phrases[+t.dataset.v], +t.dataset.v); return; }
   if (a === 'room') { room = t.dataset.r; history.replaceState(null, '', room === 'r2' ? '#room2' : '#room1'); sel.clear(); choice = null; onState(); return; }
   if (a === 'clear') { sel.clear(); choice = null; render(); return; }
   if (a === 'tostore' || a === 'unstore') {
@@ -1131,9 +1272,9 @@ document.addEventListener('click', async (e) => {
     if (!needNick()) return;
     const i = +t.dataset.i;
     return mutate((s) => {
-      if (s.seats.includes(uid)) throw new Error('你已经有座位了');
+      if (s.seats.includes(uid)) throw new Error(T('haveSeat'));
       const old = s.seats[i];
-      if (!old || ((s.names || {})[old] || '') !== nick.trim()) throw new Error('昵称和这个座位不一致，请填和之前完全一样的昵称');
+      if (!old || ((s.names || {})[old] || '') !== nick.trim()) throw new Error(T('nickMismatch'));
       s.seats[i] = uid; s.votes = (s.votes || []).map((v) => (v === old ? uid : v));
       return withName(s);
     });
@@ -1152,7 +1293,7 @@ document.addEventListener('click', async (e) => {
     let type = null;
     if (a === 'play') {
       const opts = G.options(st, ids);
-      if (!opts.length) { toast(st.g.last ? '管不上，或者这不是有效的牌型' : '这不是有效的牌型'); return; }
+      if (!opts.length) { toast(D().err[st.g.last ? 'cantBeat' : 'invalidType']); return; }
       if (opts.length > 1) { choice = opts; render(); return; }
       type = opts[0].type;
     } else type = t.dataset.t;
@@ -1160,12 +1301,13 @@ document.addEventListener('click', async (e) => {
   }
 });
 
+applyStatic();
 $('#nick').value = nick;
 $('#nick').addEventListener('input', (e) => { nick = e.target.value; ls.set('gd-nick', nick); });
 renderSnd();
 (async () => {
-  if (!firebaseConfig.projectId) { fatal = '还没有填入 Firebase 配置：请把配置粘贴到 index.html 里。'; render(); return; }
-  const timer = setTimeout(() => { if (!ready) { fatal = '暂时连不上数据库，请检查网络后刷新页面。'; render(); } }, 12000);
+  if (!firebaseConfig.projectId) { fatal = { k: 'noConfig' }; render(); return; }
+  const timer = setTimeout(() => { if (!ready) { fatal = { k: 'noConn' }; render(); } }, 12000);
   try {
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -1178,15 +1320,15 @@ renderSnd();
         onSnapshot(doc(db, 'chat', r), (snap) => onChat(r, snap.exists() ? JSON.parse(snap.data().s) : []), () => {});
         onSnapshot(doc(db, 'rooms', r), (snap) => {
           clearTimeout(timer);
-          ready = true; fatal = '';
+          ready = true; fatal = null;
           states[r] = snap.exists() ? JSON.parse(snap.data().s) : null;
           if (states[r]) handleEvent(r, states[r]); else evSeen[r] = 0;
           onState();
-        }, (e) => { clearTimeout(timer); fatal = '读取牌桌失败（' + e.code + '）：请检查 Firestore 规则。'; render(); });
+        }, (e) => { clearTimeout(timer); fatal = { k: 'readFail', p: { c: e.code } }; render(); });
       }
     });
     await signInAnonymously(auth);
-  } catch (e) { clearTimeout(timer); fatal = '连接 Firebase 失败（' + (e.code || e.message) + '）：请检查配置和匿名登录是否已开启。'; render(); }
+  } catch (e) { clearTimeout(timer); fatal = { k: 'fbFail', p: { c: e.code || e.message } }; render(); }
 })();
 }
 </script>
