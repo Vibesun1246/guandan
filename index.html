@@ -62,6 +62,10 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;padding:0 m
 .s-right{right:4px;top:50%;transform:translateY(-50%);align-items:center}
 .slot small{font-size:13px;font-weight:700;color:#fff;background:rgba(0,0,0,.3);padding:0 8px;border-radius:6px}
 .ps{font-weight:900;color:#e2efe6;font-size:18px;padding:12px 14px;border-radius:12px;background:rgba(0,0,0,.18)}
+.timer{font-variant-numeric:tabular-nums;font-weight:900}.timer.low{color:#e5484d}
+.think .timer{font-size:20px;color:#ffd36b}.think .timer.low{color:#ff8a8a}
+.status .btn.small{margin-left:4px}
+.panel.paused{background:rgba(6,30,18,.86)}
 .think{font-size:14px;color:#d8e8dd;padding:14px}
 .center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
 .center .lv{font:900 40px/1 "Noto Serif SC",serif;color:rgba(232,180,58,.35)}
@@ -367,6 +371,7 @@ const G = (() => {
     if (first) {
       const s = hands.findIndex((h) => h.includes(MARKED));
       g.turn = s;
+      stamp(st);
       log(st, 'first', { s });
       return;
     }
@@ -380,6 +385,7 @@ const G = (() => {
     const bigJ = givers.reduce((a, s) => a + hands[s].filter((id) => card(id).r === 17).length, 0);
     if (bigJ >= 2) {
       g.turn = o[0];
+      stamp(st);
       log(st, 'anti', { givers, lead: o[0] });
       return;
     }
@@ -418,6 +424,7 @@ const G = (() => {
   }
   function giveTribute(st, uid, id) {
     if (st.phase !== 'tribute') throw E('notTribute');
+    notPaused(st);
     const s = needSeat(st, uid), g = st.g;
     const t = g.trib.find((x) => x.from === s && x.id == null);
     if (!t) throw E('noTributeNeeded');
@@ -428,6 +435,7 @@ const G = (() => {
   }
   function giveBack(st, uid, id) {
     if (st.phase !== 'tribute') throw E('notReturn');
+    notPaused(st);
     const s = needSeat(st, uid), g = st.g;
     const t = g.trib.find((x) => x.to === s && x.to != null && x.id != null && x.ret == null);
     if (!t) throw E('noReturnYet');
@@ -442,16 +450,21 @@ const G = (() => {
       st.phase = 'play';
       const lead = (g.trib.find((x) => g.recv ? x.to === g.recv[0] : true) || g.trib[0]).from;
       g.turn = lead;
+      stamp(st);
       log(st, 'lead', { s: lead });
     }
     return st;
   }
 
+  const now = (st) => st._now || Date.now();
+  const stamp = (st) => { if (st.g && st.phase === 'play' && st.g.turn >= 0) st.g.turnAt = now(st); };
+  const notPaused = (st) => { if (st.paused) throw E('paused'); };
   const nextActive = (g, s) => { for (let k = 1; k <= 4; k++) { const t = (s + k) % 4; if (!g.done.includes(t)) return t; } return -1; };
   function options(st, ids) { return analyze(ids, st.g.L).filter((p) => beats(p, st.g.last)); }
 
   function play(st, uid, ids, type) {
     if (st.phase !== 'play') throw E('cantPlay');
+    notPaused(st);
     const g = st.g, s = needSeat(st, uid);
     if (s !== g.turn) throw E('notYourTurn');
     const h = g.hands[s];
@@ -472,10 +485,12 @@ const G = (() => {
       if (checkEnd(st)) return st;
     }
     g.turn = nextActive(g, s);
+    stamp(st);
     return st;
   }
   function pass(st, uid) {
     if (st.phase !== 'play') throw E('cantAct');
+    notPaused(st);
     const g = st.g, s = needSeat(st, uid);
     if (s !== g.turn) throw E('notYourTurn');
     if (!g.last) throw E('mustLead');
@@ -493,6 +508,37 @@ const G = (() => {
       g.passes = 0;
       g.turn = lead;
     } else g.turn = nextActive(g, s);
+    stamp(st);
+    return st;
+  }
+  // 出牌超时：跟牌时自动“不要”；先手时自动出最小的一张单牌
+  function timeout(st, at) {
+    const g = st.g;
+    if (st.phase !== 'play' || st.paused || !g || g.turnAt !== at || g.turn < 0) return null;
+    const s = g.turn, u = st.seats[s];
+    if (g.last) { log(st, 'autoPass', { s }); pass(st, u); }
+    else {
+      const h = sortHand(g.hands[s], g.L), id = h[h.length - 1];
+      log(st, 'autoPlay', { s, card: id });
+      play(st, u, [id], 'single');
+    }
+    if (st.ev) st.ev.auto = true;
+    return st;
+  }
+  function pause(st, uid) {
+    const s = needSeat(st, uid);
+    if (st.phase !== 'play' && st.phase !== 'tribute') throw E('cantPause');
+    if (st.paused) return null;
+    st.paused = { s, at: now(st) };
+    log(st, 'paused', { s });
+    return st;
+  }
+  function resume(st, uid) {
+    const s = needSeat(st, uid);
+    if (!st.paused) return null;
+    if (st.g && st.g.turnAt) st.g.turnAt += Math.max(0, now(st) - st.paused.at);
+    st.paused = null;
+    log(st, 'resumed', { s });
     return st;
   }
   function checkEnd(st) {
@@ -542,7 +588,7 @@ const G = (() => {
     return st;
   }
   function toLobby(st) {
-    Object.assign(st, { phase: 'lobby', g: null, votes: [], levels: [2, 2], aFails: [0, 0], round: 0, winner: null, prev: null });
+    Object.assign(st, { phase: 'lobby', g: null, paused: null, votes: [], levels: [2, 2], aFails: [0, 0], round: 0, winner: null, prev: null });
     log(st, 'reset');
     return st;
   }
@@ -557,7 +603,7 @@ const G = (() => {
     return st;
   }
 
-  return { card, isWild, val, team, partner, rname, cardName, sortHand, analyze, beats, describe, keyName, fresh, sit, leave, start, giveBack, giveTribute, tributeChoices, play, pass, nextRound, vote, options, topCard, MARKED, POS, TEAM, SUIT_CH };
+  return { card, isWild, val, team, partner, rname, cardName, sortHand, analyze, beats, describe, keyName, fresh, sit, leave, start, giveBack, giveTribute, tributeChoices, play, pass, timeout, pause, resume, nextRound, vote, options, topCard, MARKED, POS, TEAM, SUIT_CH };
 })();
 
 
@@ -623,16 +669,17 @@ const I18N = {
     emoTitle: '表情和快捷短语', emoAria: '发送表情 {e}', chatPh: '自己说点什么（最多20字）', send: '发送', seatFirst: '入座后才能发消息', tooFast: '发得太快了，歇一下',
     coffeeLabel: '请喝一杯卡布奇诺 ☕', actTomato: '向 {name} 扔了一个番茄', actCoffee: '给 {name} 倒了一杯卡布奇诺', yourTurnTitle: '轮到你了 · ',
     types: { single: '单张', pair: '对子', triple: '三张', full: '三带二', straight: '顺子', tube: '三连对', plate: '钢板', kings: '四王炸', bomb: '{n}张炸', sf: '同花顺', royal: '顶同' },
-    keyTo: '到{r}', and: '和',
+    keyTo: '到{r}', and: '和', secs: '秒', pauseBtn: '暂停', resumeBtn: '继续游戏', pausedTitle: '牌局已暂停', pausedBy: '{name} 按了暂停。大家准备好后，任何一位玩家都可以点“继续游戏”。', pausedHint: '牌局暂停中，暂时不能出牌',
     phrases: ['快点出牌呀，等得我都饿了', '这把稳了！', '队友给力！', '我有炸，放心走', '先别炸，留着', '你走，我掩护', '要大牌，别给小的', '我要放大招了', '手气太差了……', '再来一盘！', '配合愉快，谢谢队友'],
     err: { notSeated: '你还没有入座', inGameNoSwap: '游戏进行中，不能换座', seatTaken: '这个座位已经有人了', inGameNoLeave: '游戏进行中，不能离座', started: '游戏已经开始了',
       needFour: '需要4个人坐满才能开始', notTribute: '现在不是进贡阶段', noTributeNeeded: '你不需要进贡', notInHand: '这张牌不在你手里', mustBeMax: '进贡必须是你手里最大的牌',
       notReturn: '现在不是还贡阶段', noReturnYet: '现在还不需要你还贡', returnSmall: '还贡要还一张10或以下的牌', cantPlay: '现在不能出牌', notYourTurn: '还没轮到你',
       playNotInHand: '出的牌不在你手里', cantBeat: '管不上，或者这不是有效的牌型', invalidType: '这不是有效的牌型', cantAct: '现在不能操作', mustLead: '你是先手，必须出牌',
-      roundNotOver: '这一局还没结束', noResetNeeded: '现在不需要重置' },
+      roundNotOver: '这一局还没结束', noResetNeeded: '现在不需要重置', paused: '牌局暂停中，请先继续游戏', cantPause: '现在不能暂停' },
     log: { start: '新的一盘开始，两队都从2打起', first: '第1局打2，{s} 拿到★红桃3，先出牌', round: '第{r}局：打{L}（{team}的级）', anti: '{givers} 手里有两张大王，抗贡！{lead} 先出牌',
       inner: '上一局是头游加末游，这局内贡', trib: '{from} 向 {to} 进贡 {card}', tribOut: '{from} 交出进贡牌 {card}', tribTo: '{from} 的 {card} 给 {to}', ret: '{s} 还给 {to} {card}',
       lead: '{s} 先出牌', out: '{s} 出完了，是{pos}', jiefeng: '{s} 接风', reset: '对局已重置，可以重新选座后开始', vote: '{s} 申请重置（{n}/4）', unvote: '{s} 取消了重置申请',
+      autoPass: '{s} 超时，自动“不要”', autoPlay: '{s} 超时，自动出了 {card}', paused: '{s} 暂停了牌局', resumed: '{s} 继续了牌局',
       aDrop: '{team}连续3次打A没过，掉回2', aFail: '{team}打A没过（第{n}次）', win: '{team}过A，赢下整盘！', up: '{team}升{n}级：{lvFrom} → {lvTo}' },
   },
   en: {
@@ -663,16 +710,17 @@ const I18N = {
     emoTitle: 'Emotes and quick phrases', emoAria: 'Send emote {e}', chatPh: 'Say something (up to 20 characters)', send: 'Send', seatFirst: 'Take a seat to send messages', tooFast: 'Slow down a little',
     coffeeLabel: 'Have a cappuccino ☕', actTomato: 'threw a tomato at {name}', actCoffee: 'poured {name} a cappuccino', yourTurnTitle: 'Your turn · ',
     types: { single: 'Single', pair: 'Pair', triple: 'Triple', full: 'Full house', straight: 'Straight', tube: 'Three pairs', plate: 'Steel plate', kings: 'Four Jokers', bomb: '{n}-card bomb', sf: 'Straight flush', royal: 'Royal flush' },
-    keyTo: 'up to {r}', and: ' and ',
+    keyTo: 'up to {r}', and: ' and ', secs: 's', pauseBtn: 'Pause', resumeBtn: 'Resume game', pausedTitle: 'Game paused', pausedBy: '{name} paused the game. When everyone is ready, any player can tap “Resume game”.', pausedHint: 'The game is paused — no plays until it resumes',
     phrases: ["Hurry up, I'm getting hungry", "We've got this one!", 'Nice one, partner!', 'I have a bomb — go for it', "Don't bomb yet, save it", "You go, I'll cover you", 'Play high, not low', 'Big move incoming', 'My cards are awful…', 'One more match!', 'Great teamwork, thanks partner'],
     err: { notSeated: "You haven't taken a seat", inGameNoSwap: "You can't change seats during a match", seatTaken: 'That seat is taken', inGameNoLeave: "You can't leave your seat during a match", started: 'The game has already started',
       needFour: 'All 4 seats must be filled to start', notTribute: "It's not the tribute stage", noTributeNeeded: "You don't need to pay tribute", notInHand: "That card isn't in your hand", mustBeMax: 'Tribute must be your highest card',
       notReturn: "It's not time to return a card", noReturnYet: "You don't need to return a card yet", returnSmall: 'The card you give back must be 10 or lower', cantPlay: "You can't play right now", notYourTurn: "It's not your turn",
       playNotInHand: "Those cards aren't in your hand", cantBeat: "That doesn't beat the last play, or isn't a valid combination", invalidType: "That isn't a valid combination", cantAct: "You can't do that right now", mustLead: "You're leading, so you must play",
-      roundNotOver: "This round isn't over yet", noResetNeeded: 'No reset needed right now' },
+      roundNotOver: "This round isn't over yet", noResetNeeded: 'No reset needed right now', paused: 'The game is paused — resume it first', cantPause: "You can't pause right now" },
     log: { start: 'New match — both teams start at 2', first: 'Round 1 at level 2 — {s} has the ★3♥ and leads', round: "Round {r}: playing {L} ({team}'s level)", anti: '{givers} hold both Big Jokers — tribute resisted! {lead} leads',
       inner: 'Last round finished 1st + last out — internal tribute this round', trib: '{from} pays {card} as tribute to {to}', tribOut: '{from} hands in {card} as tribute', tribTo: "{from}'s {card} goes to {to}", ret: '{s} gives {card} back to {to}',
       lead: '{s} leads', out: '{s} is out — {pos}', jiefeng: "{s} takes the lead for their partner", reset: 'Match reset — pick seats and start again', vote: '{s} requested a reset ({n}/4)', unvote: '{s} withdrew their reset request',
+      autoPass: '{s} ran out of time — automatic pass', autoPlay: '{s} ran out of time — {card} played automatically', paused: '{s} paused the game', resumed: '{s} resumed the game',
       aDrop: '{team} failed at A three times in a row — back to 2', aFail: '{team} failed at A (attempt {n})', win: '{team} passed A and won the match!', up: '{team} moves up {n}: {lvFrom} → {lvTo}' },
   },
 };
@@ -774,6 +822,7 @@ const SFX = {
   pass() { const t = AU.ctx.currentTime; tone(420, t, 0.12, 0.15, 'triangle', AU.sfx); },
   ding() { const t = AU.ctx.currentTime; tone(1318.5, t, 0.16, 0.35, 'sine', AU.sfx); tone(1760, t + 0.13, 0.22, 0.35, 'sine', AU.sfx); },
   turn() { const t = AU.ctx.currentTime; tone(660, t, 0.25, 0.2, 'sine', AU.sfx); tone(990, t + 0.1, 0.3, 0.14, 'sine', AU.sfx); },
+  tick() { const t = AU.ctx.currentTime; tone(1500, t, 0.05, 0.25, 'square', AU.sfx); },
   whoosh() { sweep(AU.ctx.currentTime, 0.55, 0.9, 500, 2600); },
   splat() { const t = AU.ctx.currentTime; noise(t, 0.32, 2.2, 520, 0.7, AU.sfx); noise(t + 0.03, 0.18, 1.2, 1500, 1.2, AU.sfx); tone(170, t, 0.18, 0.5, 'sine', AU.sfx, 55); },
   clink() { const t = AU.ctx.currentTime; tone(2637, t, 0.35, 0.12, 'sine', AU.sfx); tone(3951, t + 0.01, 0.3, 0.07, 'sine', AU.sfx); tone(2093, t + 0.12, 0.3, 0.08, 'sine', AU.sfx); },
@@ -948,7 +997,7 @@ function buildChat() {
 function sendChat(kind, text, p) {
   const me = cur().seats.indexOf(uid);
   if (me < 0) { toast(T('seatFirst')); return false; }
-  if (Date.now() - lastSend < 1000) { toast(T('tooFast')); return false; }
+  if (Date.now() - lastSend < 1500) { toast(T('tooFast')); return false; }
   lastSend = Date.now();
   const m = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), seat: me, kind, text: String(text).slice(0, 20), name: nick.trim() };
   if (p != null) m.p = p;
@@ -967,7 +1016,7 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 function sendThrow(item, to) {
   const st = cur(), me = st.seats.indexOf(uid);
   if (me < 0 || to === me) return;
-  if (Date.now() - lastSend < 1000) { toast(T('tooFast')); return; }
+  if (Date.now() - lastSend < 1500) { toast(T('tooFast')); return; }
   lastSend = Date.now();
   const who = rawName(st, to) || '玩家';
   const text = item === 'tomato' ? `向 ${who} 扔了一个番茄` : `给 ${who} 倒了一杯卡布奇诺`;
@@ -1034,6 +1083,33 @@ function shake(s) {
 }
 
 // ================= 画面 =================
+// ================= 出牌倒计时 =================
+const TURN_SECS = 40;
+function remaining(st) {
+  const g = st.g;
+  if (!g || st.phase !== 'play' || !g.turnAt || g.turn < 0) return null;
+  const nowT = st.paused ? st.paused.at : Date.now();
+  return TURN_SECS - (nowT - g.turnAt) / 1000;
+}
+const timerHTML = (st) => { const r = remaining(st); if (r == null) return ''; const n = Math.max(0, Math.ceil(r)); return `<b class="timer ${n <= 10 ? 'low' : ''}">${n}</b>`; };
+let lastTick = null, timeoutTried = null;
+setInterval(() => {
+  if (!ready) return;
+  const st = cur(), r = remaining(st);
+  if (r == null) return;
+  const n = Math.max(0, Math.ceil(r));
+  document.querySelectorAll('.timer').forEach((el) => { if (el.textContent !== String(n)) el.textContent = n; el.classList.toggle('low', n <= 10); });
+  if (st.paused) return;
+  const g = st.g, me = st.seats.indexOf(uid);
+  if (g.turn === me && me >= 0 && n <= 5 && n > 0 && lastTick !== g.turnAt + ':' + n) { lastTick = g.turnAt + ':' + n; sfx('tick'); }
+  // 时间到：轮到的人自己先处理；他掉线的话，其他玩家等2秒后代为处理
+  if (me >= 0 && timeoutTried !== g.turnAt && ((r <= 0 && g.turn === me) || r <= -2)) {
+    timeoutTried = g.turnAt;
+    const at = g.turnAt;
+    mutate((s) => G.timeout(s, at));
+  }
+}, 250);
+
 function cardEl(id, L, cls = '', mark = false, btn = false) {
   const c = G.card(id);
   const red = c.s === 'H' || c.s === 'D' || c.r === 17;
@@ -1100,13 +1176,16 @@ function slotHTML(st, s, pos) {
   const g = st.g, tk = g.trick[s];
   const turn = g.turn === s && st.phase === 'play';
   let inner = '';
-  if (turn) inner = `<div class="think">${esc(T('thinking'))}</div>`;
+  if (turn) inner = `<div class="think">${esc(T('thinking'))} ${timerHTML(st)}</div>`;
   else if (tk) inner = tk.pass ? `<div class="ps">${esc(T('pass'))}</div>` : mini(tk.ids, g.L, st.round === 1) + `<small>${esc(trickLabel(tk))}</small>`;
   const old = !g.last && !turn ? 'old' : '';
   return `<div class="slot s-${pos} ${old}">${inner}</div>`;
 }
 function panelHTML(st, me) {
   const g = st.g;
+  if (st.paused) {
+    return `<div class="panel paused"><div class="lv">II</div><div class="big">${esc(T('pausedTitle'))}</div><div class="lvl">${esc(T('pausedBy', { name: seatName(st, st.paused.s) }))}</div>${me >= 0 ? `<button class="btn" data-act="resume" style="pointer-events:auto">${esc(T('resumeBtn'))}</button>` : ''}</div>`;
+  }
   if (st.phase === 'tribute') {
     const rule = g.recv ? `<div class="lvl">${esc(T('tribRule'))}</div>` : '';
     const lines = g.trib.map((t) => {
@@ -1138,9 +1217,10 @@ function gameHTML(st, me) {
   let turnMsg = '';
   if (st.phase === 'play') turnMsg = g.turn === me ? T('yourTurn') + (g.last ? '' : T('free')) : T('waitFor', { name: seatName(st, g.turn) });
   else if (st.phase === 'tribute') turnMsg = T('tribPhase');
+  if (st.paused) turnMsg = T('pausedTitle');
   else turnMsg = T('roundEnd');
   const L = G.rname(g.L);
-  const status = `<div class="status"><span>${esc(T('statusRound', { r: st.round }))}</span><span class="lvbig">${L}</span><span>${esc(g.lt < 0 ? T('bothFrom2') : T('teamLevel', { team: teamName(g.lt) }))} · ${esc(T('wilds', { L }))}</span><span class="turnmsg">${esc(turnMsg)}</span></div>`;
+  const status = `<div class="status"><span>${esc(T('statusRound', { r: st.round }))}</span><span class="lvbig">${L}</span><span>${esc(g.lt < 0 ? T('bothFrom2') : T('teamLevel', { team: teamName(g.lt) }))} · ${esc(T('wilds', { L }))}</span><span class="turnmsg">${esc(turnMsg)}${st.phase === 'play' && remaining(st) != null ? ' · ' + timerHTML(st) + esc(T('secs')) : ''}</span>${me >= 0 && !st.paused && (st.phase === 'play' || st.phase === 'tribute') ? `<button class="btn sec small" data-act="pause">${esc(T('pauseBtn'))}</button>` : ''}</div>`;
   const table = `<div class="felt table">${seats.map((s, k) => playerHTML(st, s, pos[k], me)).join('')}<div class="mid">${seats.map((s, k) => slotHTML(st, s, pos[k])).join('')}${panelHTML(st, me)}</div></div>`;
   if (me < 0) return status + table + `<div class="handwrap"><span class="small">${esc(T('spectate'))}</span></div>`;
   return status + table + handHTML(st, me);
@@ -1158,7 +1238,9 @@ function handHTML(st, me) {
   const arrange = `<button class="btn sec" data-act="tostore" ${sel.size ? '' : 'disabled'}>${esc(T('toStore'))}</button>${selInStore ? `<button class="btn sec" data-act="unstore">${esc(T('unstore'))}</button>` : ''}`;
   const clear = `<button class="btn sec" data-act="clear" ${sel.size ? '' : 'disabled'}>${esc(T('clear'))}</button>`;
   let ctrl = '';
-  if (st.phase === 'play' && g.turn === me) {
+  if (st.paused) {
+    ctrl = `${clear}${arrange}<span class="hint">${esc(T('pausedHint'))}</span>`;
+  } else if (st.phase === 'play' && g.turn === me) {
     const hint = g.last ? T('beatHint', { name: seatName(st, g.last.seat), label: trickLabel(g.trick[g.last.seat] || g.last), key: keyNameL(g.last, g.L) }) : T('leadHint');
     ctrl = `<button class="btn" data-act="play" ${sel.size ? '' : 'disabled'}>${esc(T('play'))}</button>
       <button class="btn sec" data-act="pass" ${g.last ? '' : 'disabled'}>${esc(T('pass'))}</button>${clear}${arrange}<span class="hint">${esc(hint)}</span>`;
@@ -1202,13 +1284,20 @@ async function txWrite(col, r, fn) {
   await runTransaction(db, async (tx) => {
     const ref = doc(db, col, r);
     const snap = await tx.get(ref);
-    tx.set(ref, { s: JSON.stringify(fn(snap.exists() ? JSON.parse(snap.data().s) : null)) });
+    const v = fn(snap.exists() ? JSON.parse(snap.data().s) : null);
+    if (v != null) tx.set(ref, { s: JSON.stringify(v) });
   });
 }
 async function mutate(fn) {
   if (!db || !uid) { toast(T('noDb')); return; }
   try {
-    await txWrite('rooms', room, (st0) => { const st = st0 || G.fresh(); const v = st.v || 0; const next = fn(st); next.v = v + 1; return next; });
+    await txWrite('rooms', room, (st0) => {
+      const st = st0 || G.fresh(); const v = st.v || 0;
+      st._now = Date.now();
+      const next = fn(st);
+      if (!next) return null;
+      delete next._now; next.v = v + 1; return next;
+    });
     return true;
   } catch (e) {
     toast(e && e.code === 'permission-denied' ? T('denied') : errText(e));
@@ -1296,6 +1385,8 @@ document.addEventListener('click', async (e) => {
   if (a === 'start') return mutate((s) => withName(G.start(s, uid, rand)));
   if (a === 'next') return mutate((s) => G.nextRound(s, uid, rand));
   if (a === 'pass') { sel.clear(); choice = null; return mutate((s) => G.pass(s, uid)); }
+  if (a === 'pause') return mutate((s) => G.pause(s, uid));
+  if (a === 'resume') return mutate((s) => G.resume(s, uid));
   if (a === 'vote') return mutate((s) => G.vote(s, uid, true));
   if (a === 'unvote') return mutate((s) => G.vote(s, uid, false));
   if (a === 'reset') return mutate((s) => G.vote(s, uid, true));
