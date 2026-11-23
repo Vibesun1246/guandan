@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>掼蛋 · 好友联机</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&family=Noto+Serif+SC:wght@700;900&display=swap" rel="stylesheet">
+<style>
+/* VOICE: 牌桌上的热闹，但规则清楚、不花哨
+   IDEA: 一张真实的牌桌——绿呢台面、木质桌沿、纸牌
+   PICTURE: 牌桌本身就是画面：四个座位围着中间的出牌区
+   COLOUR and TYPE: 墨绿呢面 + 木色桌沿 + 牌面朱红与金色万能牌；Noto Serif SC 标题，Noto Sans SC 正文
+   LAYOUT: 顶部房间切换，中间牌桌，下方手牌与按钮，右侧级数和记录 */
+:root{color-scheme:light dark;--bg:light-dark(#ebe4d3,#07160f);--ink:light-dark(#1d2a22,#e9efe9);--sub:light-dark(#5b6b60,#9fb2a6);--panel:light-dark(#fffaf0,#0f2419);--line:light-dark(#d6ccb5,#24412f);--felt:#13603b;--felt2:#0b3f26;--wood:#6b4423;--gold:#e8b43a;--red:#c8102e;--a:#e8b43a;--b:#6fc3ff}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Noto Sans SC",system-ui,sans-serif;overflow-x:clip}
+button{font:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding:14px max(4vw,14px)}
+h1{font:900 34px/1.05 "Noto Serif SC",serif;margin:0;letter-spacing:.04em}
+h1 small{font:500 14px "Noto Sans SC",sans-serif;color:var(--sub);margin-left:8px;letter-spacing:0}
+.tabs{display:flex;gap:8px;margin-left:auto}
+.tab{min-height:44px;padding:6px 16px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-weight:700}
+.tab[aria-pressed=true]{background:var(--felt);color:#fff;border-color:var(--felt)}
+.tab span{font-weight:400;font-size:13px;opacity:.8;margin-left:6px}
+main{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;padding:0 max(4vw,14px) 28px;max-width:1320px;margin:0 auto}
+@media(max-width:900px){main{grid-template-columns:minmax(0,1fr)}}
+.felt{background:radial-gradient(ellipse at 50% 40%,#1c7a4c,var(--felt) 45%,var(--felt2));border:12px solid var(--wood);border-radius:30px;box-shadow:inset 0 0 40px rgba(0,0,0,.45),0 10px 30px rgba(0,0,0,.25);color:#f3f7f2;position:relative}
+.table{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr);grid-template-areas:". top ." "left mid right" ". bot .";gap:10px;padding:16px;min-height:430px}
+.pl{border-radius:16px;padding:8px 10px;background:rgba(0,0,0,.18);border:2px solid transparent;display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center}
+.pl.turn{border-color:var(--gold);box-shadow:0 0 18px rgba(232,180,58,.55)}
+.pos-top{grid-area:top}.pos-left{grid-area:left}.pos-right{grid-area:right}.pos-bot{grid-area:bot}
+.nm{font-weight:700;font-size:15px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center}
+.tg{font-size:12px;font-weight:700;padding:1px 7px;border-radius:6px;color:#10231a}
+.tg.t0{background:var(--a)}.tg.t1{background:var(--b)}
+.meta{font-size:13px;color:#cfe3d6}
+.badge{background:var(--gold);color:#3a2600;font-weight:900;font-size:13px;padding:1px 8px;border-radius:6px}
+.trk{min-height:52px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.trk.old{opacity:.45}
+.trk small{font-size:12px;color:#e9f3ec}
+.ps{font-weight:700;color:#cfe3d6;font-size:15px;padding-top:12px}
+.mid{grid-area:mid;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;padding:8px}
+.lv{font:900 46px/1 "Noto Serif SC",serif;color:var(--gold)}
+.lvl{font-size:13px;color:#cfe3d6}
+.turnmsg{font-weight:700;font-size:17px}
+.btn{min-height:44px;padding:8px 20px;border-radius:12px;border:0;font-weight:700;background:var(--gold);color:#2c1d00}
+.btn.sec{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
+.btn.ghost{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.3)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.cd{width:52px;height:76px;border-radius:7px;background:#fffdf7;color:#1c1c1c;border:1px solid #c9bea5;box-shadow:0 2px 4px rgba(0,0,0,.3);position:relative;display:inline-flex;flex-direction:column;align-items:flex-start;padding:3px 5px;margin-left:-26px;line-height:1;flex:none;transition:transform .12s}
+.cd b{font-size:18px;font-weight:900}.cd i{font-style:normal;font-size:19px;margin-top:2px}
+.cd.red{color:var(--red)}
+.cd.joker b{font-size:14px;line-height:1.05;writing-mode:vertical-rl}
+.cd.wild{background:#fff3cc;border:2px solid var(--gold)}
+.cd em{position:absolute;right:3px;bottom:3px;font-style:normal;font-size:11px;font-weight:900;background:var(--gold);color:#3a2600;border-radius:4px;padding:1px 3px}
+.cd u{position:absolute;right:4px;top:3px;text-decoration:none;color:#b8860b;font-size:13px}
+.cd.up{transform:translateY(-16px);box-shadow:0 6px 12px rgba(0,0,0,.35)}
+button.cd{cursor:pointer;font:inherit}
+.mini{display:flex;padding-left:16px}
+.mini .cd{width:30px;height:44px;margin-left:-16px;padding:2px 3px;border-radius:5px}
+.mini .cd b{font-size:12px}.mini .cd i{font-size:12px}.mini .cd em,.mini .cd u{display:none}.mini .cd.joker b{font-size:10px}
+.handwrap{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:18px 16px 14px}
+.hand{display:flex;flex-wrap:wrap;row-gap:10px;padding:18px 0 4px 26px;min-height:100px}
+.ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
+.ctrl .hint{color:var(--sub);font-size:14px}
+.choose{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+aside{display:flex;flex-direction:column;gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px 16px}
+.card h3{margin:0 0 8px;font:700 17px/1.2 "Noto Serif SC",serif}
+.team{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.team:first-of-type{border-top:0}
+.team .big{font:900 30px/1 "Noto Serif SC",serif;margin-left:auto}
+.team .who{font-size:13px;color:var(--sub)}
+.log{list-style:none;margin:0;padding:0;font-size:14px;max-height:300px;overflow:auto}
+.log li{padding:4px 0;border-top:1px dashed var(--line)}
+.log li:first-child{border-top:0}
+.lobby{padding:22px;min-height:440px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-areas:". s2 ." "s3 info s1" ". s0 .";gap:12px;align-items:center}
+.seat{min-height:96px;border-radius:16px;border:2px dashed rgba(255,255,255,.45);background:rgba(0,0,0,.18);color:#fff;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px}
+.seat.taken{border-style:solid}
+.seat.t0.taken{border-color:var(--a)}.seat.t1.taken{border-color:var(--b)}
+.seat.me{box-shadow:0 0 0 3px #fff inset}
+.seat small{font-weight:400;font-size:13px;opacity:.85}
+.info{grid-area:info;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center}
+.info p{margin:0;font-size:14px;color:#d8e8dd}
+.note{padding:10px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);margin-bottom:12px}
+.nickbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:0 max(4vw,14px) 14px;max-width:1320px;margin:0 auto}.nickbar label{font-weight:700}.nickbar input{font:inherit;font-size:16px;min-height:44px;padding:6px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);width:180px}
+.pl{position:relative}
+.bubble{position:absolute;left:50%;top:-14px;transform:translate(-50%,-100%);z-index:5;background:#fffdf7;color:#1d2a22;font-weight:700;font-size:15px;padding:8px 12px;border-radius:14px;box-shadow:0 6px 16px rgba(0,0,0,.35);max-width:220px;width:max-content;animation:pop .25s ease-out}
+.bubble::after{content:"";position:absolute;left:50%;bottom:-7px;margin-left:-7px;border:7px solid transparent;border-bottom:0;border-top-color:#fffdf7}
+.bubble.emo{font-size:44px;line-height:1;padding:6px 10px}
+.pos-top .bubble{top:auto;bottom:-14px;transform:translate(-50%,100%)}
+.pos-top .bubble::after{bottom:auto;top:-7px;border-top:0;border-bottom:7px solid #fffdf7}
+@keyframes pop{from{transform:translate(-50%,-100%) scale(.6);opacity:0}}
+.pos-top .bubble{animation:none}
+#chatpanel h4{margin:0 0 8px;font:700 15px/1.2 "Noto Serif SC",serif}
+.emos,.says{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.emos button{font-size:26px;width:48px;height:48px;border-radius:12px;border:1px solid var(--line);background:var(--bg)}
+.says button{min-height:40px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:14px}
+.chatin{display:flex;gap:8px}.chatin input{flex:1;font:inherit;font-size:16px;min-height:44px;padding:6px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+@media(prefers-reduced-motion:reduce){.bubble{animation:none}}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1d2a22;color:#fff;padding:10px 18px;border-radius:12px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.35);z-index:9;max-width:90vw}
+.res{list-style:none;padding:0;margin:0;font-size:15px}
+.res li{padding:2px 0}
+.small{font-size:13px;color:var(--sub)}
+@media(max-width:600px){
+ h1{font-size:28px}.tabs{margin-left:0}
+ .table{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"top top" "left right" "mid mid" "bot bot";padding:10px;min-height:0}
+ .felt{border-width:8px;border-radius:22px}
+ .cd{width:42px;height:62px;margin-left:-22px}.cd b{font-size:15px}.cd i{font-size:15px}
+ .hand{padding-left:22px}
+ .lobby{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"info info" "s0 s1" "s2 s3";padding:14px}
+ .lv{font-size:38px}
+}
+@media(prefers-reduced-motion:reduce){.cd{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>掼蛋<small>好友联机 · 我们的规则</small></h1>
+  <nav class="tabs" id="tabs">
+    <button class="tab" data-act="room" data-r="r1" aria-pressed="true">1号房间<span id="c1"></span></button>
+    <button class="tab" data-act="room" data-r="r2" aria-pressed="false">2号房间<span id="c2"></span></button>
+  </nav>
+</header>
+<div class="nickbar"><label for="nick">你的昵称</label><input id="nick" maxlength="12" placeholder="例如：James" autocomplete="nickname"><span class="small">入座前先填好，朋友们会看到这个名字</span></div>
+<main>
+  <section><div id="stage"><div class="note">正在连接牌桌…</div></div><div id="chatpanel" class="handwrap" hidden></div></section>
+  <aside id="side"></aside>
+</main>
+<div class="toast" id="toast" hidden></div>
+<script>
+const G = (() => {
+  const SUITS = ['S', 'H', 'C', 'D'];
+  const SUIT_CH = { S: '♠', H: '♥', C: '♣', D: '♦', J: '' };
+  const MARKED = 14; // 第一副牌的红桃3，带★，只用于决定第一局先手
+  const POS = ['头游', '二游', '三游', '末游'];
+  const TEAM = ['A队', 'B队'];
+  const RN = { 11: 'J', 12: 'Q', 13: 'K', 14: 'A', 16: '小王', 17: '大王' };
+
+  const E = (m) => new Error(m);
+  function card(id) {
+    const d = Math.floor(id / 54), i = id % 54;
+    if (i === 52) return { id, d, r: 16, s: 'J' };
+    if (i === 53) return { id, d, r: 17, s: 'J' };
+    return { id, d, s: SUITS[Math.floor(i / 13)], r: (i % 13) + 2 };
+  }
+  const isWild = (c, L) => c.r === L && (c.s === 'H' || c.s === 'D');
+  const val = (r, L) => (r >= 16 ? r : r === L ? 15 : r);
+  const team = (s) => s % 2;
+  const partner = (s) => (s + 2) % 4;
+  const rname = (r) => (r <= 10 ? String(r) : RN[r]);
+  const cardName = (id) => { const c = card(id); return c.s === 'J' ? RN[c.r] : SUIT_CH[c.s] + rname(c.r); };
+
+  function sortHand(ids, L) {
+    return ids.slice().sort((a, b) => {
+      const x = card(a), y = card(b);
+      const vx = val(x.r, L), vy = val(y.r, L);
+      if (vx !== vy) return vy - vx;
+      return SUITS.indexOf(x.s) - SUITS.indexOf(y.s) || a - b;
+    });
+  }
+
+  // 识别一手牌所有可能的牌型（每种牌型只保留最大的解释）
+  function analyze(ids, L) {
+    const n = ids.length;
+    if (!n) return [];
+    const out = {};
+    const add = (type, key, bomb) => {
+      const o = out[type];
+      if (!o || key > o.key) out[type] = { type, key, n, bomb: bomb || 0 };
+    };
+    let w = 0;
+    const jok = [], norm = [];
+    for (const c of ids.map(card)) {
+      if (isWild(c, L)) w++;
+      else if (c.r >= 16) jok.push(c);
+      else norm.push(c);
+    }
+    const cnt = {};
+    for (const c of norm) cnt[c.r] = (cnt[c.r] || 0) + 1;
+    const ranks = Object.keys(cnt).map(Number);
+
+    if (n === 4 && jok.length === 4) add('kings', 0, 10000);
+    if (!jok.length && ranks.length <= 1) {
+      const k = ranks.length ? val(ranks[0], L) : 15;
+      if (n === 1) add('single', k);
+      else if (n === 2) add('pair', k);
+      else if (n === 3) add('triple', k);
+      else add('bomb', k, (n <= 5 ? (n - 3) * 100 : (n - 2) * 100) + k);
+    }
+    if (n === 1 && jok.length === 1) add('single', jok[0].r);
+    if (n === 2 && jok.length === 2 && jok[0].r === jok[1].r) add('pair', jok[0].r);
+    if (n === 5) {
+      const jp = jok.length === 2 && jok[0].r === jok[1].r;
+      if (!jok.length || jp) {
+        for (let T = 2; T <= 14; T++) {
+          const cT = cnt[T] || 0;
+          if (cT > 3) continue;
+          if (jp) { if (norm.length === cT && 3 - cT === w) add('full', val(T, L)); continue; }
+          for (let P = 2; P <= 14; P++) {
+            if (P === T) continue;
+            const cP = cnt[P] || 0;
+            if (cP > 2 || cT + cP !== norm.length || 5 - cT - cP !== w) continue;
+            add('full', val(T, L));
+          }
+        }
+      }
+    }
+    if (!jok.length) {
+      const seq = (len, mult) => {
+        const tops = [];
+        for (let s = 1; s + len - 1 <= 14; s++) {
+          let used = 0, ok = true;
+          for (let k = 0; k < len; k++) {
+            const r = s + k === 1 ? 14 : s + k;
+            const c = cnt[r] || 0;
+            if (c > mult) { ok = false; break; }
+            used += c;
+          }
+          if (ok && used === norm.length && len * mult - used === w) tops.push(s + len - 1);
+        }
+        return tops;
+      };
+      if (n === 5) {
+        const flush = norm.length > 0 && norm.every((c) => c.s === norm[0].s);
+        for (const t of seq(5, 1)) {
+          add('straight', t);
+          if (flush) add('sf', t, 300 + t);
+        }
+      }
+      if (n === 6) {
+        for (const t of seq(3, 2)) add('tube', t);
+        for (const t of seq(2, 3)) add('plate', t);
+      }
+    }
+    return Object.values(out);
+  }
+
+  // 炸弹大小：4张(1xx) < 5张(2xx) < 同花顺/顶同(3xx) < 6张(4xx) < 7张(5xx) < 8张(6xx) < 四王(10000)
+  function beats(p, q) {
+    if (!q) return true;
+    if (p.bomb) return q.bomb ? p.bomb > q.bomb : true;
+    if (q.bomb) return false;
+    return p.type === q.type && p.n === q.n && p.key > q.key;
+  }
+
+  const TYPE_NAME = { single: '单张', pair: '对子', triple: '三张', full: '三带二', straight: '顺子', tube: '三连对', plate: '钢板', kings: '四王炸' };
+  function describe(p) {
+    if (p.type === 'bomb') return p.n + '张炸';
+    if (p.type === 'sf') return p.key === 14 ? '顶同' : '同花顺';
+    return TYPE_NAME[p.type];
+  }
+  function keyName(p, L) {
+    if (p.type === 'kings') return '';
+    if (['straight', 'tube', 'plate', 'sf'].includes(p.type)) return '到' + rname(p.key);
+    return p.key === 15 ? rname(L) : rname(p.key);
+  }
+
+  // ---------- 房间状态 ----------
+  function fresh() {
+    return { v: 0, phase: 'lobby', seats: [null, null, null, null], levels: [2, 2], aFails: [0, 0], round: 0, g: null, prev: null, votes: [], log: [], winner: null };
+  }
+  function log(st, m) { st.log.push(m); if (st.log.length > 40) st.log.splice(0, st.log.length - 40); }
+  const seatOf = (st, uid) => st.seats.indexOf(uid);
+  function needSeat(st, uid) { const s = seatOf(st, uid); if (s < 0) throw E('你还没有入座'); return s; }
+
+  function sit(st, uid, i) {
+    if (st.phase !== 'lobby') throw E('游戏进行中，不能换座');
+    if (st.seats[i] && st.seats[i] !== uid) throw E('这个座位已经有人了');
+    const cur = seatOf(st, uid);
+    if (cur >= 0) st.seats[cur] = null;
+    st.seats[i] = uid;
+    return st;
+  }
+  function leave(st, uid) {
+    if (st.phase !== 'lobby') throw E('游戏进行中，不能离座');
+    const c = seatOf(st, uid);
+    if (c >= 0) st.seats[c] = null;
+    return st;
+  }
+  function start(st, uid, rng) {
+    if (st.phase !== 'lobby') throw E('游戏已经开始了');
+    if (st.seats.some((s) => !s)) throw E('需要4个人坐满才能开始');
+    needSeat(st, uid);
+    Object.assign(st, { levels: [2, 2], aFails: [0, 0], round: 0, winner: null, votes: [], prev: null, log: [] });
+    log(st, '新的一盘开始，两队都从2打起');
+    deal(st, rng);
+    return st;
+  }
+  function shuffle(rng) {
+    const a = [...Array(108).keys()];
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+  function topCard(h, L) {
+    let best = null;
+    for (const id of h) {
+      const c = card(id), v = val(c.r, L), wd = isWild(c, L);
+      if (!best || v > best.v || (v === best.v && best.w && !wd)) best = { id, v, w: wd };
+    }
+    return best.id;
+  }
+  function deal(st, rng) {
+    st.round++;
+    const first = st.round === 1;
+    const lt = first ? -1 : st.prev.winTeam;
+    const L = first ? 2 : st.levels[lt];
+    const d = shuffle(rng);
+    const hands = [0, 1, 2, 3].map((i) => d.slice(i * 27, i * 27 + 27));
+    const g = { L, lt, hands, turn: 0, last: null, passes: 0, trick: {}, done: [], trib: null };
+    st.g = g;
+    st.phase = 'play';
+    st.votes = [];
+    if (first) {
+      const s = hands.findIndex((h) => h.includes(MARKED));
+      g.turn = s;
+      log(st, `第1局打2，@${s} 拿到★红桃3，先出牌`);
+      return;
+    }
+    log(st, `第${st.round}局：打${rname(L)}（${TEAM[lt]}的级）`);
+    const o = st.prev.order;
+    const givers = st.prev.double ? [o[2], o[3]] : [o[3]];
+    const receivers = st.prev.double ? [o[0], o[1]] : [o[0]];
+    const bigJ = givers.reduce((a, s) => a + hands[s].filter((id) => card(id).r === 17).length, 0);
+    if (bigJ >= 2) {
+      g.turn = o[0];
+      log(st, `${givers.map((s) => '@' + s).join('和')} 手里有两张大王，抗贡！@${o[0]} 先出牌`);
+      return;
+    }
+    const picks = givers.map((s) => { const id = topCard(hands[s], L); hands[s].splice(hands[s].indexOf(id), 1); return { s, id }; });
+    if (picks.length === 2 && val(card(picks[1].id).r, L) > val(card(picks[0].id).r, L)) picks.reverse();
+    g.trib = picks.map((p, i) => ({ from: p.s, to: receivers[i], id: p.id, ret: null }));
+    for (const t of g.trib) { hands[t.to].push(t.id); log(st, `@${t.from} 向 @${t.to} 进贡 ${cardName(t.id)}`); }
+    st.phase = 'tribute';
+    g.turn = g.trib[0].from;
+  }
+  function giveBack(st, uid, id) {
+    if (st.phase !== 'tribute') throw E('现在不是还贡阶段');
+    const s = needSeat(st, uid), g = st.g;
+    const t = g.trib.find((x) => x.to === s && x.ret == null);
+    if (!t) throw E('你不需要还贡');
+    const h = g.hands[s];
+    if (!h.includes(id)) throw E('这张牌不在你手里');
+    if (h.some((x) => card(x).r <= 10) && !(card(id).r <= 10)) throw E('还贡要还一张10或以下的牌');
+    h.splice(h.indexOf(id), 1);
+    g.hands[t.from].push(id);
+    t.ret = id;
+    log(st, `@${s} 还给 @${t.from} ${cardName(id)}`);
+    if (g.trib.every((x) => x.ret != null)) {
+      st.phase = 'play';
+      g.turn = g.trib[0].from;
+      log(st, `@${g.turn} 先出牌`);
+    }
+    return st;
+  }
+
+  const nextActive = (g, s) => { for (let k = 1; k <= 4; k++) { const t = (s + k) % 4; if (!g.done.includes(t)) return t; } return -1; };
+  function options(st, ids) { return analyze(ids, st.g.L).filter((p) => beats(p, st.g.last)); }
+
+  function play(st, uid, ids, type) {
+    if (st.phase !== 'play') throw E('现在不能出牌');
+    const g = st.g, s = needSeat(st, uid);
+    if (s !== g.turn) throw E('还没轮到你');
+    const h = g.hands[s];
+    if (!ids.length || new Set(ids).size !== ids.length || !ids.every((i) => h.includes(i))) throw E('出的牌不在你手里');
+    let opts = options(st, ids);
+    if (type) opts = opts.filter((o) => o.type === type);
+    if (!opts.length) throw E(g.last ? '管不上，或者牌型不对' : '这不是有效的牌型');
+    const p = opts[0];
+    for (const i of ids) h.splice(h.indexOf(i), 1);
+    if (!g.last) g.trick = {};
+    g.last = { seat: s, ids: sortHand(ids, g.L), type: p.type, key: p.key, n: p.n, bomb: p.bomb };
+    g.passes = 0;
+    g.trick[s] = { ids: g.last.ids, label: describe(p) };
+    if (!h.length) {
+      g.done.push(s);
+      log(st, `@${s} 出完了，是${POS[g.done.length - 1]}`);
+      if (checkEnd(st)) return st;
+    }
+    g.turn = nextActive(g, s);
+    return st;
+  }
+  function pass(st, uid) {
+    if (st.phase !== 'play') throw E('现在不能操作');
+    const g = st.g, s = needSeat(st, uid);
+    if (s !== g.turn) throw E('还没轮到你');
+    if (!g.last) throw E('你是先手，必须出牌');
+    g.passes++;
+    g.trick[s] = { pass: true };
+    const resp = [0, 1, 2, 3].filter((x) => !g.done.includes(x) && x !== g.last.seat).length;
+    if (g.passes >= resp) {
+      const ls = g.last.seat;
+      let lead;
+      if (!g.done.includes(ls)) lead = ls;
+      else if (!g.done.includes(partner(ls))) { lead = partner(ls); log(st, `@${lead} 接风`); }
+      else lead = nextActive(g, ls);
+      g.last = null;
+      g.passes = 0;
+      g.turn = lead;
+    } else g.turn = nextActive(g, s);
+    return st;
+  }
+  function checkEnd(st) {
+    const g = st.g, d = g.done;
+    const teamDone = (t) => d.includes(t) && d.includes(t + 2);
+    if (!teamDone(0) && !teamDone(1)) return false;
+    const order = d.slice();
+    for (let s = 0; s < 4; s++) if (!order.includes(s)) order.push(s);
+    const w = team(order[0]);
+    const pp = order.indexOf(partner(order[0]));
+    const up = [0, 3, 2, 1][pp];
+    const res = { order, winTeam: w, double: pp === 1, up, notes: [] };
+    const aRound = g.lt >= 0 && g.L === 14 && st.levels[g.lt] === 14;
+    let matchWin = false;
+    if (aRound) {
+      const T = g.lt;
+      if (w === T && pp <= 2) matchWin = true;
+      else {
+        st.aFails[T]++;
+        if (st.aFails[T] >= 3) {
+          st.levels[T] = 2; st.aFails[T] = 0;
+          res.notes.push(`${TEAM[T]}连续3次打A没过，掉回2`);
+        } else res.notes.push(`${TEAM[T]}打A没过（第${st.aFails[T]}次）`);
+      }
+    }
+    if (matchWin) {
+      st.phase = 'matchEnd';
+      st.winner = w;
+      res.notes.push(`${TEAM[w]}过A，赢下整盘！`);
+    } else {
+      if (!(aRound && w === g.lt)) {
+        const from = st.levels[w];
+        st.levels[w] = Math.min(14, from + up);
+        res.notes.unshift(`${TEAM[w]}升${up}级：${rname(from)} → ${rname(st.levels[w])}`);
+      }
+      st.phase = 'roundEnd';
+    }
+    res.notes.forEach((m) => log(st, m));
+    st.prev = res;
+    g.turn = -1;
+    return true;
+  }
+  function nextRound(st, uid, rng) {
+    if (st.phase !== 'roundEnd') throw E('这一局还没结束');
+    needSeat(st, uid);
+    deal(st, rng);
+    return st;
+  }
+  function toLobby(st) {
+    Object.assign(st, { phase: 'lobby', g: null, votes: [], levels: [2, 2], aFails: [0, 0], round: 0, winner: null, prev: null });
+    log(st, '对局已重置，可以重新选座后开始');
+    return st;
+  }
+  function vote(st, uid, on) {
+    const s = needSeat(st, uid);
+    if (st.phase === 'lobby') throw E('现在不需要重置');
+    if (st.phase === 'matchEnd') return toLobby(st);
+    st.votes = st.votes.filter((x) => x !== uid && st.seats.includes(x));
+    if (on) { st.votes.push(uid); log(st, `@${s} 申请重置（${st.votes.length}/4）`); }
+    else log(st, `@${s} 取消了重置申请`);
+    if (st.seats.every((x) => st.votes.includes(x))) toLobby(st);
+    return st;
+  }
+
+  return { card, isWild, val, team, partner, rname, cardName, sortHand, analyze, beats, describe, keyName, fresh, sit, leave, start, giveBack, play, pass, nextRound, vote, options, topCard, MARKED, POS, TEAM, SUIT_CH };
+})();
+
+
+</script>
+<script type="module">
+// ======== 第1处要改的地方：把 Firebase 给你的配置粘贴到下面的大括号里 ========
+const firebaseConfig = {
+  apiKey: "AIzaSyAY-NSXB49J0xsfXDf2cDRCgofb2tu6c5c",
+  authDomain: "guandan-91ca9.firebaseapp.com",
+  projectId: "guandan-91ca9",
+  storageBucket: "guandan-91ca9.firebasestorage.app",
+  messagingSenderId: "1030805706141",
+  appId: "1:1030805706141:web:de466e344b737d41b94b74"
+};
+// ===========================================================================
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+{
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const rand = () => crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296;
+let db = null, uid = null, ready = false, fatal = '';
+let nick = '';
+try { nick = localStorage.getItem('gd-nick') || ''; } catch (e) {}
+let room = location.hash === '#room2' ? 'r2' : 'r1';
+const states = { r1: null, r2: null };
+let sel = new Set(), choice = null, busy = false, toastT = 0;
+
+const cur = () => states[room] || G.fresh();
+
+// ---------- 聊天与表情 ----------
+const EMOTES = ['😂', '👍', '😎', '😭', '😡', '🤔', '🎉', '💣', '🙏', '😴'];
+const PHRASES = ['快点出牌呀，等得我都饿了', '这把稳了！', '队友给力！', '我有炸，放心走', '先别炸，留着', '你走，我掩护', '要大牌，别给小的', '我要放大招了', '手气太差了……', '再来一盘！', '配合愉快，谢谢队友'];
+const chats = { r1: [], r2: [] }, chatInit = { r1: false, r2: false }, seen = new Set(), bubbles = {};
+let lastSend = 0;
+function bubbleHTML(s) {
+  const b = bubbles[room + ':' + s];
+  if (!b || b.until < Date.now()) return '';
+  return `<div class="bubble ${b.kind === 'emo' ? 'emo' : ''}">${esc(b.text)}</div>`;
+}
+function onChat(r, list) {
+  for (const m of list) {
+    if (seen.has(m.id)) continue;
+    seen.add(m.id);
+    if (chatInit[r]) { bubbles[r + ':' + m.seat] = { kind: m.kind, text: m.text, until: Date.now() + 4000 }; setTimeout(render, 4100); }
+  }
+  chatInit[r] = true;
+  chats[r] = list;
+  render();
+}
+function chatName(m) { return m.name || seatName(cur(), m.seat); }
+function buildChat() {
+  $('#chatpanel').innerHTML = `<h4>表情和快捷短语</h4>
+    <div class="emos">${EMOTES.map((e) => `<button type="button" data-act="emo" data-v="${e}" aria-label="发送表情 ${e}">${e}</button>`).join('')}</div>
+    <div class="says">${PHRASES.map((p, i) => `<button type="button" data-act="say" data-v="${i}">${esc(p)}</button>`).join('')}</div>
+    <form class="chatin" id="chatform"><input id="chatIn" maxlength="20" placeholder="自己说点什么（最多20字）" autocomplete="off"><button class="btn sec" type="submit">发送</button></form>`;
+  $('#chatform').addEventListener('submit', (e) => { e.preventDefault(); const v = $('#chatIn').value.trim(); if (v && sendChat('text', v)) $('#chatIn').value = ''; });
+}
+function sendChat(kind, text) {
+  const me = cur().seats.indexOf(uid);
+  if (me < 0) { toast('入座后才能发消息'); return false; }
+  if (Date.now() - lastSend < 1500) { toast('发得太快了，歇一下'); return false; }
+  lastSend = Date.now();
+  const m = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), seat: me, kind, text: String(text).slice(0, 20) };
+  if (typeof nick !== 'undefined') m.name = nick.trim();
+  chatWrite(room, (list) => list.concat([m]).slice(-30));
+  return true;
+}
+function toast(m) { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 3200); }
+function seatName(st, s) {
+  const u = st.seats[s];
+  if (!u) return '空座';
+  return ((st.names && st.names[u]) || '玩家') + (u === uid ? '（你）' : '');
+}
+const fmt = (st, m) => esc(m).replace(/@(\d)/g, (_, s) => '<b>' + esc(seatName(st, +s)) + '</b>');
+
+function cardEl(id, L, cls = '', mark = false, btn = false) {
+  const c = G.card(id);
+  const red = c.s === 'H' || c.s === 'D' || c.r === 17;
+  const tag = btn ? 'button' : 'span';
+  const attr = btn ? ` type="button" data-id="${id}" aria-pressed="${cls.includes('up')}"` : '';
+  if (c.s === 'J') return `<${tag} class="cd joker ${red ? 'red' : ''} ${cls}"${attr}><b>${c.r === 17 ? '大王' : '小王'}</b></${tag}>`;
+  const wild = L && G.isWild(c, L);
+  return `<${tag} class="cd ${red ? 'red' : ''} ${wild ? 'wild' : ''} ${cls}"${attr} aria-label="${G.cardName(id)}${wild ? ' 万能牌' : ''}"><b>${G.rname(c.r)}</b><i>${G.SUIT_CH[c.s]}</i>${wild ? '<em>配</em>' : ''}${mark && id === G.MARKED ? '<u>★</u>' : ''}</${tag}>`;
+}
+const mini = (ids, L, mark) => `<div class="mini">${ids.map((i) => cardEl(i, L, '', mark)).join('')}</div>`;
+
+function render() {
+  const st = cur();
+  document.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-pressed', b.dataset.r === room));
+  for (const r of ['r1', 'r2']) {
+    const s = states[r];
+    const n = s ? s.seats.filter(Boolean).length : 0;
+    const ph = s && s.phase !== 'lobby' ? '对局中' : n + '/4人';
+    $('#c' + r[1]).textContent = ph;
+  }
+  if (fatal) { $('#stage').innerHTML = `<div class="note">${esc(fatal)}</div>`; $('#side').innerHTML = ''; return; }
+  if (!ready) return;
+  const me = st.seats.indexOf(uid);
+  $('#stage').innerHTML = (st.phase === 'lobby' ? lobbyHTML(st, me) : gameHTML(st, me));
+  $('#side').innerHTML = sideHTML(st, me);
+  $('#chatpanel').hidden = me < 0;
+  const myTurn = st.g && st.g.turn === me && me >= 0 && st.phase === 'play';
+  document.title = (myTurn ? '轮到你了 · ' : '') + '掼蛋 · 好友联机';
+}
+
+function lobbyHTML(st, me) {
+  const full = st.seats.every(Boolean);
+  const seats = [0, 1, 2, 3].map((i) => {
+    const u = st.seats[i];
+    return `<button class="seat t${i % 2} ${u ? 'taken' : ''} ${u === uid ? 'me' : ''}" style="grid-area:s${i}" data-act="sit" data-i="${i}" ${u && u !== uid ? 'disabled' : ''}>
+      <span class="tg t${i % 2}">${G.TEAM[i % 2]}</span>${u ? esc(seatName(st, i)) : '空座'}<small>${u ? (u === uid ? '这是你的座位' : '已入座') : '点击坐下'}</small></button>`;
+  }).join('');
+  return `<div class="felt lobby">${seats}
+    <div class="info">
+      <div class="lv" style="font-size:34px">${room === 'r1' ? '1号房间' : '2号房间'}</div>
+      <p>选一个座位坐下。<b style="color:var(--a)">A队</b>和<b style="color:var(--b)">B队</b>的两个人各自坐对家。</p>
+      <button class="btn" data-act="start" ${full && me >= 0 ? '' : 'disabled'}>${full ? '开始游戏' : '等待4人坐满'}</button>
+      ${me >= 0 ? '<button class="btn ghost" data-act="leave">离开座位</button>' : ''}
+    </div></div>`;
+}
+
+function seatHTML(st, s, pos) {
+  const g = st.g, t = G.team(s);
+  const di = g.done.indexOf(s);
+  const tk = g.trick[s];
+  let trk = '';
+  if (tk) trk = tk.pass ? '<span class="ps">不出</span>' : mini(tk.ids, g.L, st.round === 1) + `<small>${esc(tk.label)}</small>`;
+  const turn = g.turn === s && (st.phase === 'play');
+  const meta = di >= 0 ? `<span class="badge">${G.POS[di]}</span>` : `${g.hands[s].length} 张`;
+  const claim = st.seats.indexOf(uid) < 0 && uid ? `<button class="btn ghost" style="min-height:36px;padding:4px 12px;font-size:13px" data-act="claim" data-i="${s}">这是我的座位</button>` : '';
+  return `<div class="pl pos-${pos} ${turn ? 'turn' : ''}">${bubbleHTML(s)}<div class="nm">${esc(seatName(st, s))}<span class="tg t${t}">${G.TEAM[t]}</span></div><div class="meta">${meta}${turn ? ' · 出牌中' : ''}</div><div class="trk ${g.last ? '' : 'old'}">${trk}</div>${claim}</div>`;
+}
+
+function midHTML(st, me) {
+  const g = st.g;
+  const head = `<div class="lvl">第 ${st.round} 局 · 本局打</div><div class="lv">${G.rname(g.L)}</div><div class="lvl">${g.lt < 0 ? '两队都从2开始' : G.TEAM[g.lt] + '的级'} · ♥${G.rname(g.L)} ♦${G.rname(g.L)} 是万能牌</div>`;
+  if (st.phase === 'tribute') {
+    const lines = g.trib.map((t) => `<li>${fmt(st, `@${t.from} 进贡 ${G.cardName(t.id)} 给 @${t.to}`)} ${t.ret != null ? '· 已还贡' : '· 等待还贡'}</li>`).join('');
+    return head + `<ul class="res">${lines}</ul>`;
+  }
+  if (st.phase === 'roundEnd' || st.phase === 'matchEnd') {
+    const p = st.prev;
+    const list = p.order.map((s, i) => `<li>${G.POS[i]}：<b>${esc(seatName(st, s))}</b>（${G.TEAM[G.team(s)]}）</li>`).join('');
+    const notes = p.notes.map((n) => `<div class="turnmsg">${esc(n)}</div>`).join('');
+    const btn = st.phase === 'roundEnd'
+      ? (me >= 0 ? '<button class="btn" data-act="next">开始下一局</button>' : '<div class="lvl">等待玩家开始下一局</div>')
+      : (me >= 0 ? '<button class="btn" data-act="reset">重置，回到选座大厅</button>' : '');
+    return `<div class="lvl">第 ${st.round} 局结束</div><ul class="res">${list}</ul>${notes}${btn}`;
+  }
+  const who = g.turn === me ? '轮到你出牌' : `等待 ${esc(seatName(st, g.turn))} 出牌`;
+  return head + `<div class="turnmsg">${who}${!g.last && g.turn >= 0 ? '（自由出牌）' : ''}</div>`;
+}
+
+function gameHTML(st, me) {
+  const g = st.g;
+  const base = me >= 0 ? me : 0;
+  const pos = ['bot', 'right', 'top', 'left'];
+  let html = `<div class="felt table">${[0, 1, 2, 3].map((k) => seatHTML(st, (base + k) % 4, pos[k])).join('')}<div class="mid">${midHTML(st, me)}</div></div>`;
+  if (me < 0) return html + `<div class="handwrap"><span class="small">你在观战。如果你是这桌的玩家、只是换了设备或浏览器，填好和之前一样的昵称，再点自己座位上的“这是我的座位”。</span></div>`;
+  const hand = G.sortHand(g.hands[me], g.L);
+  const handHTML = hand.map((id) => cardEl(id, g.L, sel.has(id) ? 'up' : '', st.round === 1, true)).join('');
+  let ctrl = '';
+  if (st.phase === 'play' && g.turn === me) {
+    ctrl = `<button class="btn" data-act="play" ${sel.size ? '' : 'disabled'}>出牌</button>
+      <button class="btn sec" data-act="pass" ${g.last ? '' : 'disabled'}>不出</button>
+      <button class="btn sec" data-act="clear" ${sel.size ? '' : 'disabled'}>清空选择</button>
+      <span class="hint">${g.last ? '要管上 ' + esc(seatName(st, g.last.seat)) + ' 的' + esc(g.trick[g.last.seat].label) + ' ' + esc(G.keyName(g.last, g.L)) : '你先出，任意合法牌型都可以'}</span>`;
+  } else if (st.phase === 'tribute') {
+    const t = g.trib.find((x) => x.to === me && x.ret == null);
+    ctrl = t ? `<button class="btn" data-act="back" ${sel.size === 1 ? '' : 'disabled'}>还贡给 ${esc(seatName(st, t.from))}</button><span class="hint">选一张10或以下的牌还回去</span>`
+      : '<span class="hint">等待还贡完成…</span>';
+  } else if (st.phase === 'play') {
+    ctrl = `<button class="btn sec" data-act="clear" ${sel.size ? '' : 'disabled'}>清空选择</button><span class="hint">${g.done.includes(me) ? '你已经出完了，等队友' : '还没轮到你，可以先选好牌'}</span>`;
+  }
+  const ch = choice ? `<div class="choose"><span class="hint">这手牌有几种出法，选一种：</span>${choice.map((o) => `<button class="btn sec" data-act="playas" data-t="${o.type}">${G.describe(o)} ${esc(G.keyName(o, g.L))}</button>`).join('')}</div>` : '';
+  return html + `<div class="handwrap"><div class="small">你的手牌（${hand.length} 张）· 点牌选中，再点一次取消</div><div class="hand">${handHTML}</div><div class="ctrl">${ctrl}</div>${ch}</div>`;
+}
+
+function sideHTML(st, me) {
+  const teams = [0, 1].map((t) => `<div class="team"><span class="tg t${t}">${G.TEAM[t]}</span><span class="who">${esc(seatName(st, t))}<br>${esc(seatName(st, t + 2))}</span><span class="big">${G.rname(st.levels[t])}</span></div>
+     ${st.levels[t] === 14 && st.aFails[t] ? `<div class="small">打A失败 ${st.aFails[t]}/3 次（满3次掉回2）</div>` : ''}`).join('');
+  let reset = '';
+  if (st.phase !== 'lobby' && st.phase !== 'matchEnd' && me >= 0) {
+    const voted = (st.votes || []).includes(uid);
+    reset = `<div class="card"><h3>中途重置</h3><p class="small" style="margin:0 0 10px">4个人都同意后，进度清零，回到选座大厅。目前 ${(st.votes || []).length}/4 人同意。</p>
+      <button class="btn sec" data-act="${voted ? 'unvote' : 'vote'}">${voted ? '取消我的申请' : '申请重置'}</button></div>`;
+  }
+  const logs = st.log.slice(-14).reverse().map((m) => `<li>${fmt(st, m)}</li>`).join('');
+  return `<div class="card"><h3>级数</h3>${teams}</div>${reset}<div class="card"><h3>聊天</h3><ul class="log">${chats[room].slice(-8).reverse().map((m) => `<li><b>${esc(chatName(m))}</b>：${esc(m.text)}</li>`).join('') || '<li class="small">还没有人说话</li>'}</ul></div><div class="card"><h3>牌局记录</h3><ul class="log">${logs || '<li class="small">还没有记录</li>'}</ul></div>
+   <div class="card small">进度自动保存在这个房间里。下次用同一个浏览器打开就能接着打。</div>`;
+}
+
+async function mutate(fn) {
+  if (!db || !uid) { toast('还没连上数据库，请稍等'); return; }
+  try {
+    await runTransaction(db, async (tx) => {
+      const ref = doc(db, 'rooms', room);
+      const snap = await tx.get(ref);
+      const st = snap.exists() ? JSON.parse(snap.data().s) : G.fresh();
+      const next = fn(st);
+      next.v = (st.v || 0) + 1;
+      tx.set(ref, { s: JSON.stringify(next) });
+    });
+    return true;
+  } catch (e) {
+    if (e && e.code === 'permission-denied') toast('数据库拒绝写入：请检查 Firestore 规则是否已发布');
+    else toast((e && e.message) || '操作失败，请重试');
+  }
+}
+async function chatWrite(r, fn) {
+  if (!db || !uid) return;
+  try {
+    await runTransaction(db, async (tx) => {
+      const ref = doc(db, 'chat', r);
+      const snap = await tx.get(ref);
+      const list = snap.exists() ? JSON.parse(snap.data().s) : [];
+      tx.set(ref, { s: JSON.stringify(fn(list)) });
+    });
+  } catch (e) { toast(e && e.code === 'permission-denied' ? '聊天被数据库拒绝：请检查 Firestore 规则里有没有 chat 那一段' : '消息没发出去，请重试'); }
+}
+function needNick() { if (!nick.trim()) { toast('请先在上面填写你的昵称'); $('#nick').focus(); return false; } return true; }
+function withName(s) { s.names = s.names || {}; s.names[uid] = nick.trim(); return s; }
+
+function onState() {
+  const st = cur();
+  const me = st.seats.indexOf(uid);
+  const hand = st.g && me >= 0 ? st.g.hands[me] : [];
+  for (const id of [...sel]) if (!hand.includes(id)) sel.delete(id);
+  if (!(st.phase === 'play' && st.g && st.g.turn === me)) choice = null;
+  render();
+}
+
+document.addEventListener('click', async (e) => {
+  const cardBtn = e.target.closest('button.cd[data-id]');
+  if (cardBtn) {
+    const id = +cardBtn.dataset.id;
+    if (cur().phase === 'tribute') { sel = sel.has(id) ? new Set() : new Set([id]); }
+    else sel.has(id) ? sel.delete(id) : sel.add(id);
+    choice = null;
+    render();
+    return;
+  }
+  const t = e.target.closest('[data-act]');
+  if (!t || t.disabled) return;
+  const a = t.dataset.act;
+  if (a === 'emo') { sendChat('emo', t.dataset.v); return; }
+  if (a === 'say') { sendChat('text', PHRASES[+t.dataset.v]); return; }
+  if (a === 'room') { room = t.dataset.r; history.replaceState(null, '', room === 'r2' ? '#room2' : '#room1'); sel.clear(); choice = null; onState(); return; }
+  if (a === 'clear') { sel.clear(); choice = null; render(); return; }
+  if (a === 'sit') { if (!needNick()) return; return mutate((s) => withName(G.sit(s, uid, +t.dataset.i))); }
+  if (a === 'claim') {
+    if (!needNick()) return;
+    const i = +t.dataset.i;
+    return mutate((s) => {
+      if (s.seats.includes(uid)) throw new Error('你已经有座位了');
+      const old = s.seats[i];
+      if (!old || ((s.names || {})[old] || '') !== nick.trim()) throw new Error('昵称和这个座位不一致，请填和之前完全一样的昵称');
+      s.seats[i] = uid; s.votes = (s.votes || []).map((v) => (v === old ? uid : v));
+      return withName(s);
+    });
+  }
+  if (a === 'leave') return mutate((s) => G.leave(s, uid));
+  if (a === 'start') return mutate((s) => withName(G.start(s, uid, rand)));
+  if (a === 'next') return mutate((s) => G.nextRound(s, uid, rand));
+  if (a === 'pass') { sel.clear(); choice = null; return mutate((s) => G.pass(s, uid)); }
+  if (a === 'vote') return mutate((s) => G.vote(s, uid, true));
+  if (a === 'unvote') return mutate((s) => G.vote(s, uid, false));
+  if (a === 'reset') return mutate((s) => G.vote(s, uid, true));
+  if (a === 'back') { const id = [...sel][0]; const ok = await mutate((s) => G.giveBack(s, uid, id)); if (ok) sel.clear(); return; }
+  if (a === 'play' || a === 'playas') {
+    const ids = [...sel];
+    let type = null;
+    if (a === 'play') {
+      const opts = G.options(cur(), ids);
+      if (!opts.length) { toast(cur().g.last ? '管不上，或者这不是有效的牌型' : '这不是有效的牌型'); return; }
+      if (opts.length > 1) { choice = opts; render(); return; }
+      type = opts[0].type;
+    } else type = t.dataset.t;
+    const ok = await mutate((s) => G.play(s, uid, ids, type));
+    if (ok) { sel.clear(); choice = null; render(); }
+  }
+});
+
+$('#nick').value = nick;
+$('#nick').addEventListener('input', (e) => { nick = e.target.value; try { localStorage.setItem('gd-nick', nick); } catch (err) {} });
+(async () => {
+  if (!firebaseConfig.projectId) { fatal = '还没有填入 Firebase 配置：请按说明把配置粘贴到 index.html 里。'; render(); return; }
+  const timer = setTimeout(() => { if (!ready) { fatal = '暂时连不上数据库，请检查网络后刷新页面。'; render(); } }, 12000);
+  try {
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    db = getFirestore(app);
+    onAuthStateChanged(auth, (u) => {
+      if (!u || uid) return;
+      uid = u.uid;
+      buildChat();
+      for (const r of ['r1', 'r2']) {
+        onSnapshot(doc(db, 'chat', r), (snap) => onChat(r, snap.exists() ? JSON.parse(snap.data().s) : []), () => {});
+        onSnapshot(doc(db, 'rooms', r), (snap) => {
+          clearTimeout(timer);
+          ready = true; fatal = '';
+          states[r] = snap.exists() ? JSON.parse(snap.data().s) : null;
+          onState();
+        }, (e) => { clearTimeout(timer); fatal = '读取牌桌失败（' + e.code + '）：请检查 Firestore 规则。'; render(); });
+      }
+    });
+    await signInAnonymously(auth);
+  } catch (e) { clearTimeout(timer); fatal = '连接 Firebase 失败（' + (e.code || e.message) + '）：请检查配置和匿名登录是否已开启。'; render(); }
+})();
+}
+</script>
+</body>
+</html>
