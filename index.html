@@ -580,7 +580,7 @@ const fmt = (st, m) => esc(m).replace(/@(\d)/g, (_, s) => '<b>' + esc(seatName(s
 // ================= 声音：背景音乐、音效、语音报牌 =================
 const AU = { ctx: null, music: null, sfx: null, timer: 0, next: 0, step: 0 };
 function audioUnlock() {
-  if (AU.ctx) { if (AU.ctx.state === 'suspended') AU.ctx.resume(); return; }
+  if (AU.ctx) { if (AU.ctx.state === 'suspended') AU.ctx.resume(); syncMusic(); return; }
   const C = window.AudioContext || window.webkitAudioContext;
   if (!C) return;
   AU.ctx = new C();
@@ -626,10 +626,38 @@ function musicTick() {
     AU.step++; AU.next += eighth;
   }
 }
+// 大厅音乐：和 index.html 放在同一个文件夹里的 lobby.mp3
+const lobby = { el: null, ok: true, fade: 0 };
+function lobbyAudio() {
+  if (!lobby.el) {
+    lobby.el = new Audio('lobby.mp3');
+    lobby.el.loop = true; lobby.el.preload = 'auto'; lobby.el.volume = 0;
+    lobby.el.addEventListener('error', () => { lobby.ok = false; });
+  }
+  return lobby.el;
+}
+const LOBBY_VOL = 0.09;
+function fadeLobby(on) {
+  if (!lobby.ok) return;
+  const a = lobbyAudio();
+  clearInterval(lobby.fade);
+  if (on && a.paused) a.play().catch(() => {});
+  lobby.fade = setInterval(() => {
+    const v = a.volume + (on ? 0.006 : -0.009);
+    a.volume = Math.max(0, Math.min(LOBBY_VOL, v));
+    if (on && a.volume >= LOBBY_VOL) clearInterval(lobby.fade);
+    if (!on && a.volume <= 0) { clearInterval(lobby.fade); a.pause(); }
+  }, 60);
+}
 function syncMusic() {
-  const want = opt.music && AU.ctx && ready && cur().phase !== 'lobby';
+  const ph = cur().phase;
+  const inGame = ph === 'play' || ph === 'tribute';
+  const want = opt.music && AU.ctx && ready && inGame;
   if (want && !AU.timer) { AU.next = AU.ctx.currentTime + 0.1; AU.timer = setInterval(musicTick, 120); }
   if (!want && AU.timer) { clearInterval(AU.timer); AU.timer = 0; }
+  const wantLobby = !!(opt.music && AU.ctx && ready && !inGame);
+  if (wantLobby !== lobby.on) { lobby.on = wantLobby; fadeLobby(wantLobby); }
+  else if (wantLobby && lobby.el && lobby.el.paused && lobby.ok) lobby.el.play().catch(() => {});
 }
 let zhVoice = null;
 function pickVoice() { if (!('speechSynthesis' in window)) return; const vs = speechSynthesis.getVoices(); zhVoice = vs.find((v) => /zh[-_]CN/i.test(v.lang)) || vs.find((v) => /^zh/i.test(v.lang)) || null; }
@@ -944,7 +972,7 @@ document.addEventListener('click', async (e) => {
   if (!t || t.disabled) return;
   const a = t.dataset.act;
   const st = cur(), me = st.seats.indexOf(uid);
-  if (a === 'snd') { opt[t.dataset.k] = !opt[t.dataset.k]; ls.set('gd-snd', opt); if (!opt.voice && 'speechSynthesis' in window) speechSynthesis.cancel(); render(); return; }
+  if (a === 'snd') { opt[t.dataset.k] = !opt[t.dataset.k]; ls.set('gd-snd', opt); lobby.on = undefined; if (!opt.voice && 'speechSynthesis' in window) speechSynthesis.cancel(); render(); return; }
   if (a === 'emo') { sendChat('emo', t.dataset.v); return; }
   if (a === 'say') { sendChat('text', PHRASES[+t.dataset.v]); return; }
   if (a === 'room') { room = t.dataset.r; history.replaceState(null, '', room === 'r2' ? '#room2' : '#room1'); sel.clear(); choice = null; onState(); return; }
