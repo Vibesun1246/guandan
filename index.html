@@ -937,7 +937,7 @@ function buildChat() {
 function sendChat(kind, text, p) {
   const me = cur().seats.indexOf(uid);
   if (me < 0) { toast(T('seatFirst')); return false; }
-  if (Date.now() - lastSend < 1500) { toast(T('tooFast')); return false; }
+  if (Date.now() - lastSend < 1000) { toast(T('tooFast')); return false; }
   lastSend = Date.now();
   const m = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), seat: me, kind, text: String(text).slice(0, 20), name: nick.trim() };
   if (p != null) m.p = p;
@@ -956,7 +956,7 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 function sendThrow(item, to) {
   const st = cur(), me = st.seats.indexOf(uid);
   if (me < 0 || to === me) return;
-  if (Date.now() - lastSend < 1500) { toast(T('tooFast')); return; }
+  if (Date.now() - lastSend < 1000) { toast(T('tooFast')); return; }
   lastSend = Date.now();
   const who = rawName(st, to) || '玩家';
   const text = item === 'tomato' ? `向 ${who} 扔了一个番茄` : `给 ${who} 倒了一杯卡布奇诺`;
