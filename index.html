@@ -129,7 +129,14 @@ aside{display:flex;flex-direction:column;gap:14px}
 .emos button{font-size:26px;width:48px;height:48px;border-radius:12px;border:1px solid var(--line);background:var(--bg)}
 .says button{min-height:40px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:14px}
 .chatin{display:flex;gap:8px}.chatin input{flex:1;font:inherit;font-size:16px;min-height:44px;padding:6px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.acts{display:flex;gap:6px;justify-content:center;margin-top:2px}
+.acts button{width:34px;height:34px;border-radius:10px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);font-size:18px;line-height:1;padding:0}
+.acts button:hover{background:rgba(255,255,255,.25)}
+.fx{position:fixed;left:0;top:0;pointer-events:none;z-index:20;will-change:transform,opacity}
+.fx svg{display:block}
+.fxlabel{position:fixed;z-index:21;pointer-events:none;background:#fffdf7;color:#5a3317;font-weight:700;font-size:14px;padding:5px 10px;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.3);white-space:nowrap}
 @media(max-width:600px){
+ .acts button{width:28px;height:28px;font-size:15px}
  h1{font-size:28px}.tabs{margin-left:0}.snd{margin-left:0;width:100%}.vol{flex:1 1 100%}.vol input{flex:1;width:auto}
  .felt{border-width:8px;border-radius:22px}
  .table{grid-template-columns:64px minmax(0,1fr) 64px;grid-template-rows:auto minmax(360px,1fr) auto;grid-template-areas:"top top top" "left mid right" "bot bot bot";padding:8px;gap:6px}
@@ -613,12 +620,31 @@ function noise(t, dur, vol, freq, q, out) {
   s.buffer = buf; f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q; g.gain.value = vol;
   s.connect(f); f.connect(g); g.connect(out); s.start(t);
 }
+function sweep(t, dur, vol, f0, f1) {
+  const c = AU.ctx, n = Math.floor(c.sampleRate * dur), buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * i / n);
+  const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  s.buffer = buf; f.type = 'bandpass'; f.Q.value = 1.4; f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.7); f.frequency.exponentialRampToValueAtTime(f0, t + dur);
+  g.gain.value = vol; s.connect(f); f.connect(g); g.connect(AU.sfx); s.start(t);
+}
+function gurgle(t, dur) {
+  const c = AU.ctx, n = Math.floor(c.sampleRate * dur), buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.min(1, i / (0.08 * c.sampleRate), (n - i) / (0.25 * c.sampleRate));
+  const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  s.buffer = buf; f.type = 'bandpass'; f.Q.value = 6;
+  for (let k = 0; k < dur / 0.06; k++) f.frequency.setValueAtTime(500 + Math.random() * 900, t + k * 0.06);
+  g.gain.value = 2.2; s.connect(f); f.connect(g); g.connect(AU.sfx); s.start(t);
+}
 const SFX = {
   card() { const t = AU.ctx.currentTime; noise(t, 0.09, 1.4, 1900, 0.9, AU.sfx); tone(180, t, 0.08, 0.25, 'triangle', AU.sfx); },
   bomb() { const t = AU.ctx.currentTime; tone(160, t, 0.7, 0.9, 'sine', AU.sfx, 38); noise(t, 0.5, 1.6, 300, 0.6, AU.sfx); noise(t + 0.02, 0.25, 0.8, 2400, 0.7, AU.sfx); },
   pass() { const t = AU.ctx.currentTime; tone(420, t, 0.12, 0.15, 'triangle', AU.sfx); },
   ding() { const t = AU.ctx.currentTime; tone(1318.5, t, 0.16, 0.35, 'sine', AU.sfx); tone(1760, t + 0.13, 0.22, 0.35, 'sine', AU.sfx); },
   turn() { const t = AU.ctx.currentTime; tone(660, t, 0.25, 0.2, 'sine', AU.sfx); tone(990, t + 0.1, 0.3, 0.14, 'sine', AU.sfx); },
+  whoosh() { sweep(AU.ctx.currentTime, 0.55, 0.9, 500, 2600); },
+  splat() { const t = AU.ctx.currentTime; noise(t, 0.32, 2.2, 520, 0.7, AU.sfx); noise(t + 0.03, 0.18, 1.2, 1500, 1.2, AU.sfx); tone(170, t, 0.18, 0.5, 'sine', AU.sfx, 55); },
+  clink() { const t = AU.ctx.currentTime; tone(2637, t, 0.35, 0.12, 'sine', AU.sfx); tone(3951, t + 0.01, 0.3, 0.07, 'sine', AU.sfx); tone(2093, t + 0.12, 0.3, 0.08, 'sine', AU.sfx); },
+  pour() { gurgle(AU.ctx.currentTime, 1.1); },
 };
 function sfx(name) { if (!opt.sfx || !AU.ctx) return; try { SFX[name](); } catch (e) {} }
 // 原创五声音阶小曲：C D E G A
@@ -763,7 +789,9 @@ function onChat(r, list) {
   for (const m of list) {
     if (seen.has(m.id)) continue;
     seen.add(m.id);
-    if (chatInit[r]) { bubbles[r + ':' + m.seat] = { kind: m.kind, text: m.text, until: Date.now() + 4000 }; setTimeout(render, 4100); if (r === room) fresh = true; }
+    if (!chatInit[r]) continue;
+    if (m.kind === 'act') { if (r === room) setTimeout(() => throwFx(m.item, m.seat, m.to), 0); continue; }
+    bubbles[r + ':' + m.seat] = { kind: m.kind, text: m.text, until: Date.now() + 4000 }; setTimeout(render, 4100); if (r === room) fresh = true;
   }
   chatInit[r] = true;
   chats[r] = list;
@@ -785,6 +813,83 @@ function sendChat(kind, text) {
   const m = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), seat: me, kind, text: String(text).slice(0, 20), name: nick.trim() };
   chatWrite(room, (list) => list.concat([m]).slice(-30));
   return true;
+}
+
+// ================= 扔番茄 / 倒咖啡 =================
+const SVG = {
+  tomato: '<svg viewBox="0 0 44 44" width="44" height="44"><circle cx="22" cy="25" r="16" fill="#e0352b"/><circle cx="22" cy="25" r="16" fill="none" stroke="#b5241c" stroke-width="2"/><ellipse cx="15" cy="19" rx="5" ry="3.5" fill="#ff9184" opacity=".75"/><polygon points="22,7 25,13 31,11 27,16 32,20 25,19 22,24 20,19 13,20 18,16 14,11 20,13" fill="#2e8b3a"/></svg>',
+  splat: '<svg viewBox="0 0 120 120" width="120" height="120"><path d="M60 22c9 0 11 12 19 9s14 6 9 13 9 9 8 18-12 6-10 14-4 15-13 12-10 10-18 6-9-10-18-8-14-7-9-15-12-9-9-17 7-8 3-16 8-11 16-8 6-12 14-11z" fill="#d6281f"/><path d="M60 34c6 0 8 8 13 6s9 4 6 9 6 6 5 12-8 4-7 9-3 10-9 8-7 7-12 4-6-7-12-5-9-5-6-10-8-6-6-11 5-5 2-11 5-7 11-5 4-8 10-7z" fill="#ef4a3c"/><circle cx="22" cy="30" r="5" fill="#d6281f"/><circle cx="101" cy="40" r="4" fill="#d6281f"/><circle cx="98" cy="95" r="6" fill="#d6281f"/><circle cx="18" cy="88" r="4" fill="#d6281f"/><ellipse cx="52" cy="55" rx="3" ry="2" fill="#ffd34d"/><ellipse cx="68" cy="62" rx="3" ry="2" fill="#ffd34d" transform="rotate(30 68 62)"/><ellipse cx="58" cy="74" rx="3" ry="2" fill="#ffd34d"/><ellipse cx="72" cy="48" rx="3" ry="2" fill="#ffd34d" transform="rotate(-20 72 48)"/><path d="M47 92q2 14 5 14t3-12z" fill="#d6281f"/><path d="M75 90q1 10 4 10t2-9z" fill="#d6281f"/></svg>',
+  cup: '<svg viewBox="0 0 64 52" width="64" height="52"><ellipse cx="30" cy="46" rx="26" ry="5" fill="#e9e4da" stroke="#bfb6a6" stroke-width="1.5"/><path d="M10 14h40l-4 26q-1 6-8 6H22q-7 0-8-6z" fill="#fffdf7" stroke="#bfb6a6" stroke-width="1.5"/><path d="M50 19q11 0 10 9t-12 9" fill="none" stroke="#bfb6a6" stroke-width="4"/><ellipse cx="30" cy="14" rx="20" ry="5" fill="#8a5a33"/><ellipse cx="30" cy="14" rx="15" ry="3.4" fill="#e9d2b0"/><path d="M27 13q3-3 3 1q0-4 3-1q-3 3-3 3t-3-3z" fill="#8a5a33"/></svg>',
+  stain: '<svg viewBox="0 0 120 120" width="120" height="120"><path d="M58 24c10-2 14 9 22 8s12 9 8 15 10 8 7 17-11 5-10 13-6 14-15 11-10 9-17 5-8-11-17-8-12-8-8-15-11-9-8-17 8-6 5-14 9-10 16-7 5-6 14-8z" fill="#7a4a24" opacity=".92"/><path d="M60 40c7 0 9 6 14 6s7 6 4 10 6 6 3 11-8 3-7 8-5 8-11 6-7 5-11 2-5-7-11-5-8-5-5-10-7-6-5-11 6-4 4-9 6-6 11-4 6-4 10-4z" fill="#c8915c"/><ellipse cx="57" cy="58" rx="12" ry="8" fill="#f1dfc2"/><circle cx="24" cy="36" r="4" fill="#7a4a24"/><circle cx="100" cy="46" r="5" fill="#7a4a24"/><circle cx="92" cy="98" r="4" fill="#7a4a24"/><path d="M50 95q2 15 5 15t3-13z" fill="#7a4a24"/><path d="M78 92q1 11 4 11t2-10z" fill="#7a4a24"/></svg>',
+};
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function sendThrow(item, to) {
+  const st = cur(), me = st.seats.indexOf(uid);
+  if (me < 0 || to === me) return;
+  if (Date.now() - lastSend < 1500) { toast('手速太快了，歇一下'); return; }
+  lastSend = Date.now();
+  const who = seatName(st, to).replace('（你）', '');
+  const text = item === 'tomato' ? `向 ${who} 扔了一个番茄` : `给 ${who} 倒了一杯卡布奇诺`;
+  const m = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), seat: me, to, kind: 'act', item, text, name: nick.trim() };
+  chatWrite(room, (list) => list.concat([m]).slice(-30));
+}
+function seatBox(s) { const el = document.querySelector(`.pl[data-seat="${s}"]`); return el ? el.getBoundingClientRect() : null; }
+function fxEl(html, x, y) {
+  const el = document.createElement('div'); el.className = 'fx'; el.innerHTML = html;
+  el.style.transform = `translate(${x}px,${y}px)`; document.body.appendChild(el); return el;
+}
+function arc(x0, y0, x1, y1, h, n, extra) {
+  const k = [];
+  for (let i = 0; i <= n; i++) { const t = i / n; k.push({ transform: `translate(${x0 + (x1 - x0) * t}px,${y0 + (y1 - y0) * t - h * 4 * t * (1 - t)}px) ${extra(t)}` }); }
+  return k;
+}
+function throwFx(item, from, to) {
+  const rb = seatBox(to);
+  if (!rb) return;
+  const ra = seatBox(from) || { left: innerWidth / 2, top: innerHeight, width: 0, height: 0 };
+  const x0 = ra.left + ra.width / 2, y0 = ra.top + ra.height / 2, x1 = rb.left + rb.width / 2, y1 = rb.top + rb.height / 2;
+  const h = Math.min(160, 60 + Math.hypot(x1 - x0, y1 - y0) * 0.3);
+  if (item === 'tomato') {
+    sfx('whoosh');
+    const el = fxEl(SVG.tomato, x0 - 22, y0 - 22);
+    const fly = el.animate(arc(x0 - 22, y0 - 22, x1 - 22, y1 - 22, h, 12, (t) => `rotate(${t * 720}deg)`), { duration: reduceMotion ? 1 : 620, easing: 'linear', fill: 'forwards' });
+    fly.onfinish = () => {
+      el.remove(); sfx('splat');
+      const sp = fxEl(SVG.splat, x1 - 60, y1 - 60);
+      sp.animate([{ transform: `translate(${x1 - 60}px,${y1 - 60}px) scale(.2)`, opacity: 1 }, { transform: `translate(${x1 - 60}px,${y1 - 60}px) scale(1.1)`, opacity: 1, offset: 0.06 }, { transform: `translate(${x1 - 60}px,${y1 - 60}px) scale(1)`, opacity: 1, offset: 0.12 }, { transform: `translate(${x1 - 60}px,${y1 - 52}px) scale(1)`, opacity: 1, offset: 0.65 }, { transform: `translate(${x1 - 60}px,${y1 - 40}px) scale(1)`, opacity: 0 }], { duration: 3400, easing: 'ease-in', fill: 'forwards' }).onfinish = () => sp.remove();
+      shake(to);
+    };
+  } else {
+    sfx('clink');
+    const tx = x1 - 32 - 28, ty = y1 - 26 - 70;
+    const el = fxEl(SVG.cup, x0 - 32, y0 - 26);
+    const fly = el.animate(arc(x0 - 32, y0 - 26, tx, ty, h * 0.6, 12, () => 'rotate(0deg)'), { duration: reduceMotion ? 1 : 700, easing: 'ease-out', fill: 'forwards' });
+    fly.onfinish = () => {
+      el.animate([{ transform: `translate(${tx}px,${ty}px) rotate(0deg)` }, { transform: `translate(${tx}px,${ty}px) rotate(70deg)`, offset: 0.3 }, { transform: `translate(${tx}px,${ty}px) rotate(70deg)`, offset: 0.85 }, { transform: `translate(${tx}px,${ty}px) rotate(70deg)`, opacity: 0 }], { duration: 1500, fill: 'forwards' }).onfinish = () => el.remove();
+      setTimeout(() => {
+        sfx('pour');
+        const stream = document.createElement('div');
+        stream.className = 'fx';
+        stream.style.cssText = `width:8px;height:60px;border-radius:4px;background:linear-gradient(#8a5a33,#6b4423);transform-origin:top;transform:translate(${x1 - 14}px,${y1 - 57}px) scaleY(0)`;
+        document.body.appendChild(stream);
+        stream.animate([{ transform: `translate(${x1 - 14}px,${y1 - 57}px) scaleY(0)` }, { transform: `translate(${x1 - 14}px,${y1 - 57}px) scaleY(1)`, offset: 0.3 }, { transform: `translate(${x1 - 14}px,${y1 - 57}px) scaleY(1)`, opacity: 1, offset: 0.8 }, { transform: `translate(${x1 - 14}px,${y1 - 2}px) scaleY(0)`, opacity: 0 }], { duration: 900, fill: 'forwards' }).onfinish = () => stream.remove();
+        setTimeout(() => {
+          const sn = fxEl(SVG.stain, x1 - 60, y1 - 50);
+          sn.animate([{ transform: `translate(${x1 - 60}px,${y1 - 50}px) scale(.3)`, opacity: 0.9 }, { transform: `translate(${x1 - 60}px,${y1 - 50}px) scale(1)`, opacity: 1, offset: 0.1 }, { transform: `translate(${x1 - 60}px,${y1 - 50}px) scale(1)`, opacity: 1, offset: 0.7 }, { transform: `translate(${x1 - 60}px,${y1 - 50}px) scale(1)`, opacity: 0 }], { duration: 3200, fill: 'forwards' }).onfinish = () => sn.remove();
+          const lb = document.createElement('div'); lb.className = 'fxlabel'; lb.textContent = '请喝一杯卡布奇诺 ☕';
+          document.body.appendChild(lb);
+          const w = lb.offsetWidth;
+          lb.style.left = Math.max(8, Math.min(innerWidth - w - 8, x1 - w / 2)) + 'px'; lb.style.top = Math.max(8, rb.top - 40) + 'px';
+          lb.animate([{ opacity: 0 }, { opacity: 1, offset: 0.1 }, { opacity: 1, offset: 0.8 }, { opacity: 0 }], { duration: 2600, fill: 'forwards' }).onfinish = () => lb.remove();
+          shake(to);
+        }, 260);
+      }, 420);
+    };
+  }
+}
+function shake(s) {
+  const el = document.querySelector(`.pl[data-seat="${s}"]`);
+  if (el && !reduceMotion) el.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'translateX(-4px)' }, { transform: 'translateX(0)' }], { duration: 350 });
 }
 
 // ================= 画面 =================
@@ -845,7 +950,8 @@ function playerHTML(st, s, pos, me) {
   const g = st.g, t = G.team(s);
   const turn = g.turn === s && st.phase === 'play';
   const claim = me < 0 && uid ? `<button class="btn ghost small" data-act="claim" data-i="${s}">这是我的座位</button>` : '';
-  return `<div class="pl pos-${pos} ${turn ? 'turn' : ''}">${bubbleHTML(s)}<div class="nm">${esc(seatName(st, s))}<span class="tg t${t}">${G.TEAM[t]}</span></div><div class="meta">${countHTML(st, s, me)}</div>${claim}</div>`;
+  const acts = me >= 0 && s !== me ? `<div class="acts"><button type="button" data-act="throw" data-item="tomato" data-to="${s}" aria-label="向${esc(seatName(st, s))}扔番茄" title="扔番茄">🍅</button><button type="button" data-act="throw" data-item="coffee" data-to="${s}" aria-label="给${esc(seatName(st, s))}倒咖啡" title="倒咖啡">☕</button></div>` : '';
+  return `<div class="pl pos-${pos} ${turn ? 'turn' : ''}" data-seat="${s}">${bubbleHTML(s)}<div class="nm">${esc(seatName(st, s))}<span class="tg t${t}">${G.TEAM[t]}</span></div><div class="meta">${countHTML(st, s, me)}</div>${acts}${claim}</div>`;
 }
 function slotHTML(st, s, pos) {
   const g = st.g, tk = g.trick[s];
@@ -1010,6 +1116,7 @@ document.addEventListener('click', async (e) => {
   const st = cur(), me = st.seats.indexOf(uid);
   if (a === 'snd') { opt[t.dataset.k] = !opt[t.dataset.k]; ls.set('gd-snd', opt); lobby.on = undefined; if (!opt.voice && 'speechSynthesis' in window) speechSynthesis.cancel(); render(); return; }
   if (a === 'emo') { sendChat('emo', t.dataset.v); return; }
+  if (a === 'throw') { sendThrow(t.dataset.item, +t.dataset.to); return; }
   if (a === 'say') { sendChat('text', PHRASES[+t.dataset.v]); return; }
   if (a === 'room') { room = t.dataset.r; history.replaceState(null, '', room === 'r2' ? '#room2' : '#room1'); sel.clear(); choice = null; onState(); return; }
   if (a === 'clear') { sel.clear(); choice = null; render(); return; }
