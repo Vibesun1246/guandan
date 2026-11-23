@@ -367,8 +367,8 @@ const G = (() => {
     log(st, `第${st.round}局：打${rname(L)}（${TEAM[lt]}的级）`);
     const o = st.prev.order;
     const pp = st.prev.pp != null ? st.prev.pp : o.indexOf(partner(o[0]));
-    // 1、2 走完：三游和末游都进贡，大的给头游、小的给二游；1、3：末游贡三游；1、4：内贡，末游贡头游
-    const pairs = pp === 1 ? [[o[2], null], [o[3], null]] : pp === 2 ? [[o[3], o[2]]] : [[o[3], o[0]]];
+    // 1、2 走完：三游和末游都进贡，大的给头游、小的给二游；1、3：末游贡头游；1、4：内贡，末游贡头游
+    const pairs = pp === 1 ? [[o[2], null], [o[3], null]] : [[o[3], o[0]]];
     g.recv = pp === 1 ? [o[0], o[1]] : null;
     const givers = pairs.map((p) => p[0]);
     const bigJ = givers.reduce((a, s) => a + hands[s].filter((id) => card(id).r === 17).length, 0);
