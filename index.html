@@ -28,9 +28,13 @@ h1 small{font:500 14px "Noto Sans SC",sans-serif;color:var(--sub);margin-left:8p
 .nickbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:0 max(4vw,14px) 14px;max-width:1320px;margin:0 auto}
 .nickbar label{font-weight:700}
 .nickbar input{font:inherit;font-size:16px;min-height:44px;padding:6px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);width:170px}
-.snd{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
-.snd button{min-height:40px;padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--sub);font-size:14px}
-.snd button[aria-pressed=true]{background:var(--felt);border-color:var(--felt);color:#fff}
+.snd{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+.vol{display:flex;align-items:center;gap:8px;padding:4px 12px 4px 4px;border-radius:999px;border:1px solid var(--line);background:var(--panel)}
+.vol button{min-height:36px;padding:2px 12px;border-radius:999px;border:0;background:transparent;color:var(--sub);font-size:14px;white-space:nowrap}
+.vol button[aria-pressed=true]{background:var(--felt);color:#fff}
+.vol input{width:96px;accent-color:var(--felt);height:28px}
+.vol output{font-size:12px;color:var(--sub);width:2.4em;text-align:right;font-variant-numeric:tabular-nums}
+.vol.off input,.vol.off output{opacity:.4}
 main{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;padding:0 max(4vw,14px) 28px;max-width:1320px;margin:0 auto}
 @media(max-width:900px){main{grid-template-columns:minmax(0,1fr)}}
 .status{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;margin-bottom:10px;font-size:15px}
@@ -126,7 +130,7 @@ aside{display:flex;flex-direction:column;gap:14px}
 .says button{min-height:40px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:14px}
 .chatin{display:flex;gap:8px}.chatin input{flex:1;font:inherit;font-size:16px;min-height:44px;padding:6px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
 @media(max-width:600px){
- h1{font-size:28px}.tabs{margin-left:0}.snd{margin-left:0}
+ h1{font-size:28px}.tabs{margin-left:0}.snd{margin-left:0;width:100%}.vol{flex:1 1 100%}.vol input{flex:1;width:auto}
  .felt{border-width:8px;border-radius:22px}
  .table{grid-template-columns:64px minmax(0,1fr) 64px;grid-template-rows:auto minmax(360px,1fr) auto;grid-template-areas:"top top top" "left mid right" "bot bot bot";padding:8px;gap:6px}
  .pos-left .nm,.pos-right .nm{font-size:13px}
@@ -154,9 +158,9 @@ aside{display:flex;flex-direction:column;gap:14px}
   <label for="nick">你的昵称</label><input id="nick" maxlength="12" placeholder="例如：James" autocomplete="nickname">
   <span class="small">入座前先填好</span>
   <div class="snd">
-    <button type="button" data-act="snd" data-k="music" aria-pressed="true">背景音乐</button>
-    <button type="button" data-act="snd" data-k="sfx" aria-pressed="true">音效</button>
-    <button type="button" data-act="snd" data-k="voice" aria-pressed="true">语音报牌</button>
+    <div class="vol" data-k="music"><button type="button" data-act="snd" data-k="music" aria-pressed="true">背景音乐</button><input type="range" min="0" max="100" step="5" data-vol="music" aria-label="背景音乐音量"><output></output></div>
+    <div class="vol" data-k="sfx"><button type="button" data-act="snd" data-k="sfx" aria-pressed="true">音效</button><input type="range" min="0" max="100" step="5" data-vol="sfx" aria-label="音效音量"><output></output></div>
+    <div class="vol" data-k="voice"><button type="button" data-act="snd" data-k="voice" aria-pressed="true">语音报牌</button><input type="range" min="0" max="100" step="5" data-vol="voice" aria-label="语音报牌音量"><output></output></div>
   </div>
 </div>
 <main>
@@ -571,6 +575,10 @@ const states = { r1: null, r2: null };
 const evSeen = { r1: null, r2: null };
 let sel = new Set(), choice = null, toastT = 0;
 const opt = Object.assign({ music: true, sfx: true, voice: true }, ls.get('gd-snd', {}));
+const vol = Object.assign({ music: 60, sfx: 70, voice: 50 }, ls.get('gd-vol', {}));
+// 每个滑块的 100% 对应的实际音量（滑块默认值约为原来的大小）
+const MAXV = { music: 0.075, sfx: 0.5, lobby: 0.15 };
+const lobbyVol = () => MAXV.lobby * vol.music / 100;
 
 const cur = () => states[room] || G.fresh();
 function toast(m) { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 3200); }
@@ -584,8 +592,8 @@ function audioUnlock() {
   const C = window.AudioContext || window.webkitAudioContext;
   if (!C) return;
   AU.ctx = new C();
-  AU.music = AU.ctx.createGain(); AU.music.gain.value = 0.045; AU.music.connect(AU.ctx.destination);
-  AU.sfx = AU.ctx.createGain(); AU.sfx.gain.value = 0.35; AU.sfx.connect(AU.ctx.destination);
+  AU.music = AU.ctx.createGain(); AU.music.gain.value = MAXV.music * vol.music / 100; AU.music.connect(AU.ctx.destination);
+  AU.sfx = AU.ctx.createGain(); AU.sfx.gain.value = MAXV.sfx * vol.sfx / 100; AU.sfx.connect(AU.ctx.destination);
   if ('speechSynthesis' in window) { const u = new SpeechSynthesisUtterance(''); speechSynthesis.speak(u); }
   syncMusic();
 }
@@ -636,7 +644,6 @@ function lobbyAudio() {
   }
   return lobby.el;
 }
-const LOBBY_VOL = 0.09;
 function fadeLobby(on) {
   if (!lobby.ok) return;
   const a = lobbyAudio();
@@ -644,8 +651,8 @@ function fadeLobby(on) {
   if (on && a.paused) a.play().catch(() => {});
   lobby.fade = setInterval(() => {
     const v = a.volume + (on ? 0.006 : -0.009);
-    a.volume = Math.max(0, Math.min(LOBBY_VOL, v));
-    if (on && a.volume >= LOBBY_VOL) clearInterval(lobby.fade);
+    a.volume = Math.max(0, Math.min(lobbyVol(), v));
+    if (on && a.volume >= lobbyVol()) clearInterval(lobby.fade);
     if (!on && a.volume <= 0) { clearInterval(lobby.fade); a.pause(); }
   }, 60);
 }
@@ -664,7 +671,7 @@ function pickVoice() { if (!('speechSynthesis' in window)) return; const vs = sp
 if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
 function say(text) {
   if (!opt.voice || !('speechSynthesis' in window)) return;
-  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = 'zh-CN'; if (zhVoice) u.voice = zhVoice; u.rate = 1.1; u.volume = 1; speechSynthesis.speak(u); } catch (e) {}
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = 'zh-CN'; if (zhVoice) u.voice = zhVoice; u.rate = 1.1; u.volume = vol.voice / 100; speechSynthesis.speak(u); } catch (e) {}
 }
 function spokenPlay(ev) {
   const L = ev.L, nm = (r) => (r === 16 ? '小王' : r === 17 ? '大王' : r === 15 ? G.rname(L) : G.rname(r));
@@ -702,7 +709,36 @@ function handleEvent(r, st) {
   const me = st.seats.indexOf(uid);
   if (st.phase === 'play' && st.g && st.g.turn === me && me >= 0) setTimeout(() => sfx('turn'), 600);
 }
-function renderSnd() { document.querySelectorAll('[data-act=snd]').forEach((b) => b.setAttribute('aria-pressed', !!opt[b.dataset.k])); }
+function renderSnd() {
+  document.querySelectorAll('.vol').forEach((w) => {
+    const k = w.dataset.k;
+    w.querySelector('button').setAttribute('aria-pressed', !!opt[k]);
+    w.classList.toggle('off', !opt[k]);
+    const r = w.querySelector('input');
+    if (document.activeElement !== r) r.value = vol[k];
+    w.querySelector('output').textContent = vol[k] + '%';
+  });
+}
+function applyVol() {
+  if (AU.ctx) {
+    AU.music.gain.setTargetAtTime(MAXV.music * vol.music / 100, AU.ctx.currentTime, 0.05);
+    AU.sfx.gain.setTargetAtTime(MAXV.sfx * vol.sfx / 100, AU.ctx.currentTime, 0.05);
+  }
+  if (lobby.el && lobby.on && !lobby.el.paused) { clearInterval(lobby.fade); lobby.el.volume = Math.min(1, lobbyVol()); }
+}
+document.addEventListener('input', (e) => {
+  const k = e.target.dataset && e.target.dataset.vol;
+  if (!k) return;
+  vol[k] = +e.target.value;
+  if (!opt[k] && vol[k] > 0) { opt[k] = true; ls.set('gd-snd', opt); lobby.on = undefined; syncMusic(); }
+  ls.set('gd-vol', vol);
+  applyVol(); renderSnd();
+});
+document.addEventListener('change', (e) => {
+  const k = e.target.dataset && e.target.dataset.vol;
+  if (k === 'sfx') sfx('card');
+  if (k === 'voice') say('三个4带一对2');
+});
 
 // ================= 存储区（只保存在自己的浏览器里） =================
 const storeKey = () => { const st = cur(); return `gd-store:${room}:${st.round}:${uid}`; };
