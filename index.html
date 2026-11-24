@@ -66,6 +66,7 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;padding:0 m
 .think .timer{font-size:20px;color:#ffd36b}.think .timer.low{color:#ff8a8a}
 .status .btn.small{margin-left:4px}
 .panel.paused{background:rgba(6,30,18,.86)}
+.rdy{display:inline-block;margin-top:2px;background:#2fbf71;color:#05301b;font-weight:900;font-size:13px;padding:1px 8px;border-radius:6px}
 .think{font-size:14px;color:#d8e8dd;padding:14px}
 .center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
 .center .lv{font:900 40px/1 "Noto Serif SC",serif;color:rgba(232,180,58,.35)}
@@ -324,15 +325,18 @@ const G = (() => {
   function sit(st, uid, i) {
     if (st.phase !== 'lobby') throw E('inGameNoSwap');
     if (st.seats[i] && st.seats[i] !== uid) throw E('seatTaken');
+    if (st.seats[i] === uid) return st;
     const cur = seatOf(st, uid);
     if (cur >= 0) st.seats[cur] = null;
     st.seats[i] = uid;
+    st.ready = (st.ready || []).filter((x) => x !== uid);
     return st;
   }
   function leave(st, uid) {
     if (st.phase !== 'lobby') throw E('inGameNoLeave');
     const c = seatOf(st, uid);
     if (c >= 0) st.seats[c] = null;
+    st.ready = (st.ready || []).filter((x) => x !== uid);
     return st;
   }
   function start(st, uid, rng) {
@@ -368,6 +372,7 @@ const G = (() => {
     st.g = g;
     st.phase = 'play';
     st.votes = [];
+    st.ready = [];
     if (first) {
       const s = hands.findIndex((h) => h.includes(MARKED));
       g.turn = s;
@@ -587,8 +592,18 @@ const G = (() => {
     deal(st, rng);
     return st;
   }
+  // 准备：4个在座的人都准备好后自动发牌（大厅里开新的一盘，局与局之间发下一局）
+  function setReady(st, uid, on, rng) {
+    needSeat(st, uid);
+    if (st.phase !== 'lobby' && st.phase !== 'roundEnd') throw E('cantReady');
+    st.ready = (st.ready || []).filter((x) => x !== uid && st.seats.includes(x));
+    if (on) st.ready.push(uid);
+    const all = st.seats.every((x) => x && st.ready.includes(x));
+    if (all) { if (st.phase === 'lobby') start(st, uid, rng); else deal(st, rng); }
+    return st;
+  }
   function toLobby(st) {
-    Object.assign(st, { phase: 'lobby', g: null, paused: null, votes: [], levels: [2, 2], aFails: [0, 0], round: 0, winner: null, prev: null });
+    Object.assign(st, { phase: 'lobby', g: null, paused: null, ready: [], votes: [], levels: [2, 2], aFails: [0, 0], round: 0, winner: null, prev: null });
     log(st, 'reset');
     return st;
   }
@@ -603,7 +618,7 @@ const G = (() => {
     return st;
   }
 
-  return { card, isWild, val, team, partner, rname, cardName, sortHand, analyze, beats, describe, keyName, fresh, sit, leave, start, giveBack, giveTribute, tributeChoices, play, pass, timeout, pause, resume, nextRound, vote, options, topCard, MARKED, POS, TEAM, SUIT_CH };
+  return { card, isWild, val, team, partner, rname, cardName, sortHand, analyze, beats, describe, keyName, fresh, sit, leave, start, giveBack, giveTribute, tributeChoices, play, pass, timeout, pause, resume, setReady, nextRound, vote, options, topCard, MARKED, POS, TEAM, SUIT_CH };
 })();
 
 
@@ -669,13 +684,13 @@ const I18N = {
     emoTitle: '表情和快捷短语', emoAria: '发送表情 {e}', chatPh: '自己说点什么（最多20字）', send: '发送', seatFirst: '入座后才能发消息', tooFast: '发得太快了，歇一下',
     coffeeLabel: '请喝一杯卡布奇诺 ☕', actTomato: '向 {name} 扔了一个番茄', actCoffee: '给 {name} 倒了一杯卡布奇诺', yourTurnTitle: '轮到你了 · ',
     types: { single: '单张', pair: '对子', triple: '三张', full: '三带二', straight: '顺子', tube: '三连对', plate: '钢板', kings: '四王炸', bomb: '{n}张炸', sf: '同花顺', royal: '顶同' },
-    keyTo: '到{r}', and: '和', secs: '秒', pauseBtn: '暂停', resumeBtn: '继续游戏', pausedTitle: '牌局已暂停', pausedBy: '{name} 按了暂停。大家准备好后，任何一位玩家都可以点“继续游戏”。', pausedHint: '牌局暂停中，暂时不能出牌',
+    keyTo: '到{r}', and: '和', readyBtn: '准备', readyNext: '准备下一局', unready: '取消准备', readyTag: '已准备', readyCount: '已准备 {n}/4', autoDeal: '4人都准备好后自动发牌', secs: '秒', pauseBtn: '暂停', resumeBtn: '继续游戏', pausedTitle: '牌局已暂停', pausedBy: '{name} 按了暂停。大家准备好后，任何一位玩家都可以点“继续游戏”。', pausedHint: '牌局暂停中，暂时不能出牌',
     phrases: ['快点出牌呀，等得我都饿了', '这把稳了！', '队友给力！', '我有炸，放心走', '先别炸，留着', '你走，我掩护', '要大牌，别给小的', '我要放大招了', '手气太差了……', '再来一盘！', '配合愉快，谢谢队友'],
     err: { notSeated: '你还没有入座', inGameNoSwap: '游戏进行中，不能换座', seatTaken: '这个座位已经有人了', inGameNoLeave: '游戏进行中，不能离座', started: '游戏已经开始了',
       needFour: '需要4个人坐满才能开始', notTribute: '现在不是进贡阶段', noTributeNeeded: '你不需要进贡', notInHand: '这张牌不在你手里', mustBeMax: '进贡必须是你手里最大的牌',
       notReturn: '现在不是还贡阶段', noReturnYet: '现在还不需要你还贡', returnSmall: '还贡要还一张10或以下的牌', cantPlay: '现在不能出牌', notYourTurn: '还没轮到你',
       playNotInHand: '出的牌不在你手里', cantBeat: '管不上，或者这不是有效的牌型', invalidType: '这不是有效的牌型', cantAct: '现在不能操作', mustLead: '你是先手，必须出牌',
-      roundNotOver: '这一局还没结束', noResetNeeded: '现在不需要重置', paused: '牌局暂停中，请先继续游戏', cantPause: '现在不能暂停' },
+      roundNotOver: '这一局还没结束', noResetNeeded: '现在不需要重置', paused: '牌局暂停中，请先继续游戏', cantPause: '现在不能暂停', cantReady: '现在不需要准备' },
     log: { start: '新的一盘开始，两队都从2打起', first: '第1局打2，{s} 拿到★红桃3，先出牌', round: '第{r}局：打{L}（{team}的级）', anti: '{givers} 手里有两张大王，抗贡！{lead} 先出牌',
       inner: '上一局是头游加末游，这局内贡', trib: '{from} 向 {to} 进贡 {card}', tribOut: '{from} 交出进贡牌 {card}', tribTo: '{from} 的 {card} 给 {to}', ret: '{s} 还给 {to} {card}',
       lead: '{s} 先出牌', out: '{s} 出完了，是{pos}', jiefeng: '{s} 接风', reset: '对局已重置，可以重新选座后开始', vote: '{s} 申请重置（{n}/4）', unvote: '{s} 取消了重置申请',
@@ -710,13 +725,13 @@ const I18N = {
     emoTitle: 'Emotes and quick phrases', emoAria: 'Send emote {e}', chatPh: 'Say something (up to 20 characters)', send: 'Send', seatFirst: 'Take a seat to send messages', tooFast: 'Slow down a little',
     coffeeLabel: 'Have a cappuccino ☕', actTomato: 'threw a tomato at {name}', actCoffee: 'poured {name} a cappuccino', yourTurnTitle: 'Your turn · ',
     types: { single: 'Single', pair: 'Pair', triple: 'Triple', full: 'Full house', straight: 'Straight', tube: 'Three pairs', plate: 'Steel plate', kings: 'Four Jokers', bomb: '{n}-card bomb', sf: 'Straight flush', royal: 'Royal flush' },
-    keyTo: 'up to {r}', and: ' and ', secs: 's', pauseBtn: 'Pause', resumeBtn: 'Resume game', pausedTitle: 'Game paused', pausedBy: '{name} paused the game. When everyone is ready, any player can tap “Resume game”.', pausedHint: 'The game is paused — no plays until it resumes',
+    keyTo: 'up to {r}', and: ' and ', readyBtn: 'Ready', readyNext: 'Ready for next round', unready: 'Cancel ready', readyTag: 'Ready', readyCount: '{n}/4 ready', autoDeal: 'cards are dealt once all 4 are ready', secs: 's', pauseBtn: 'Pause', resumeBtn: 'Resume game', pausedTitle: 'Game paused', pausedBy: '{name} paused the game. When everyone is ready, any player can tap “Resume game”.', pausedHint: 'The game is paused — no plays until it resumes',
     phrases: ["Hurry up, I'm getting hungry", "We've got this one!", 'Nice one, partner!', 'I have a bomb — go for it', "Don't bomb yet, save it", "You go, I'll cover you", 'Play high, not low', 'Big move incoming', 'My cards are awful…', 'One more match!', 'Great teamwork, thanks partner'],
     err: { notSeated: "You haven't taken a seat", inGameNoSwap: "You can't change seats during a match", seatTaken: 'That seat is taken', inGameNoLeave: "You can't leave your seat during a match", started: 'The game has already started',
       needFour: 'All 4 seats must be filled to start', notTribute: "It's not the tribute stage", noTributeNeeded: "You don't need to pay tribute", notInHand: "That card isn't in your hand", mustBeMax: 'Tribute must be your highest card',
       notReturn: "It's not time to return a card", noReturnYet: "You don't need to return a card yet", returnSmall: 'The card you give back must be 10 or lower', cantPlay: "You can't play right now", notYourTurn: "It's not your turn",
       playNotInHand: "Those cards aren't in your hand", cantBeat: "That doesn't beat the last play, or isn't a valid combination", invalidType: "That isn't a valid combination", cantAct: "You can't do that right now", mustLead: "You're leading, so you must play",
-      roundNotOver: "This round isn't over yet", noResetNeeded: 'No reset needed right now', paused: 'The game is paused — resume it first', cantPause: "You can't pause right now" },
+      roundNotOver: "This round isn't over yet", noResetNeeded: 'No reset needed right now', paused: 'The game is paused — resume it first', cantPause: "You can't pause right now", cantReady: 'Nothing to get ready for right now' },
     log: { start: 'New match — both teams start at 2', first: 'Round 1 at level 2 — {s} has the ★3♥ and leads', round: "Round {r}: playing {L} ({team}'s level)", anti: '{givers} hold both Big Jokers — tribute resisted! {lead} leads',
       inner: 'Last round finished 1st + last out — internal tribute this round', trib: '{from} pays {card} as tribute to {to}', tribOut: '{from} hands in {card} as tribute', tribTo: "{from}'s {card} goes to {to}", ret: '{s} gives {card} back to {to}',
       lead: '{s} leads', out: '{s} is out — {pos}', jiefeng: "{s} takes the lead for their partner", reset: 'Match reset — pick seats and start again', vote: '{s} requested a reset ({n}/4)', unvote: '{s} withdrew their reset request',
@@ -1140,25 +1155,34 @@ function render() {
   syncMusic();
 }
 
+const isReady = (st, s) => !!st.seats[s] && (st.ready || []).includes(st.seats[s]);
+const readyCount = (st) => [0, 1, 2, 3].filter((s) => isReady(st, s)).length;
+function readyBtnHTML(st, me, label) {
+  if (me < 0) return '';
+  const on = isReady(st, me);
+  return `<button class="btn ${on ? 'ghost' : ''}" data-act="${on ? 'unready' : 'ready'}" style="pointer-events:auto">${esc(on ? T('unready') : label)}</button>`;
+}
 function lobbyHTML(st, me) {
   const full = st.seats.every(Boolean);
   const seats = [0, 1, 2, 3].map((i) => {
     const u = st.seats[i];
     return `<button class="seat t${i % 2} ${u ? 'taken' : ''} ${u === uid ? 'me' : ''}" style="grid-area:s${i}" data-act="sit" data-i="${i}" ${u && u !== uid ? 'disabled' : ''}>
-      <span class="tg t${i % 2}">${esc(teamName(i % 2))}</span>${esc(seatName(st, i))}<small>${esc(u ? (u === uid ? T('mySeat') : T('taken')) : T('seatClick'))}</small></button>`;
+      <span class="tg t${i % 2}">${esc(teamName(i % 2))}</span>${esc(seatName(st, i))}<small>${esc(u ? (u === uid ? T('mySeat') : T('taken')) : T('seatClick'))}</small>${isReady(st, i) ? `<span class="rdy">✓ ${esc(T('readyTag'))}</span>` : ''}</button>`;
   }).join('');
   const help = esc(T('lobbyHelp')).replace('{A}', `<b style="color:var(--a)">${esc(teamName(0))}</b>`).replace('{B}', `<b style="color:var(--b)">${esc(teamName(1))}</b>`);
   return `<div class="felt lobby">${seats}
     <div class="info">
       <div class="lv">${esc(T(room === 'r1' ? 'room1' : 'room2'))}</div>
       <p>${help}</p>
-      <button class="btn" data-act="start" ${full && me >= 0 ? '' : 'disabled'}>${esc(full ? T('start') : T('waitFour'))}</button>
+      ${readyBtnHTML(st, me, T('readyBtn'))}
+      <p>${esc(T('readyCount', { n: readyCount(st) }))} · ${esc(full ? T('autoDeal') : T('waitFour'))}</p>
       ${me >= 0 ? `<button class="btn ghost" data-act="leave">${esc(T('leave'))}</button>` : ''}
     </div></div>`;
 }
 
 function countHTML(st, s, me) {
   const g = st.g, di = g.done.indexOf(s);
+  if (st.phase === 'roundEnd' && isReady(st, s)) return `<span class="rdy">✓ ${esc(T('readyTag'))}</span>`;
   if (di >= 0) return `<span class="badge">${esc(posName(di))}</span>`;
   const n = g.hands[s].length;
   if (s === me) return esc(T('myCount', { n }));
@@ -1202,7 +1226,7 @@ function panelHTML(st, me) {
     const list = p.order.map((s, i) => `<li>${esc(T('orderLine', { pos: posName(i), name: '\u0000', team: teamName(G.team(s)) })).replace('\u0000', `<b>${esc(seatName(st, s))}</b>`)}</li>`).join('');
     const notes = p.notes.map((n) => `<div class="big">${logHTML(st, n)}</div>`).join('');
     const btn = st.phase === 'roundEnd'
-      ? (me >= 0 ? `<button class="btn" data-act="next" style="pointer-events:auto">${esc(T('nextRound'))}</button>` : `<div class="lvl">${esc(T('waitNext'))}</div>`)
+      ? `${readyBtnHTML(st, me, T('readyNext'))}<div class="lvl">${esc(T('readyCount', { n: readyCount(st) }))} · ${esc(T('autoDeal'))}</div>`
       : (me >= 0 ? `<button class="btn" data-act="reset" style="pointer-events:auto">${esc(T('resetLobby'))}</button>` : '');
     return `<div class="panel"><div class="lvl">${esc(T('roundOver', { r: st.round }))}</div><ul class="res">${list}</ul>${notes}${btn}</div>`;
   }
@@ -1385,6 +1409,8 @@ document.addEventListener('click', async (e) => {
   if (a === 'start') return mutate((s) => withName(G.start(s, uid, rand)));
   if (a === 'next') return mutate((s) => G.nextRound(s, uid, rand));
   if (a === 'pass') { sel.clear(); choice = null; return mutate((s) => G.pass(s, uid)); }
+  if (a === 'ready') { if (!needNick()) return; return mutate((s) => withName(G.setReady(s, uid, true, rand))); }
+  if (a === 'unready') return mutate((s) => G.setReady(s, uid, false, rand));
   if (a === 'pause') return mutate((s) => G.pause(s, uid));
   if (a === 'resume') return mutate((s) => G.resume(s, uid));
   if (a === 'vote') return mutate((s) => G.vote(s, uid, true));
