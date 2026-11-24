@@ -91,6 +91,15 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;padding:0 m
 .cd.up{transform:translateY(-16px);box-shadow:0 6px 12px rgba(0,0,0,.35)}
 .cd.sweep{filter:brightness(.82);outline:2px solid #3b82f6;outline-offset:-2px}
 button.cd{cursor:pointer;font:inherit}
+.leftover{margin-top:14px}
+.leftover h3{margin:0 0 10px;font:700 17px/1.2 "Noto Serif SC",serif}
+.rv-row{display:grid;grid-template-columns:minmax(120px,200px) minmax(0,1fr);gap:8px 14px;align-items:center;padding:10px 0;border-top:1px dashed var(--line)}
+.rv-row:first-of-type{border-top:0}
+.rv-name{font-weight:700;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.rv-name small{font-weight:500;color:var(--sub);font-size:13px}
+.rv-cards .mini{flex-wrap:wrap;row-gap:8px}
+.rv-out{color:var(--sub);font-weight:700}
+@media(max-width:600px){.rv-row{grid-template-columns:minmax(0,1fr)}}
 .mini{display:flex;padding-left:22px}
 .mini .cd{width:40px;height:58px;margin-left:-22px;padding:2px 4px;border-radius:6px}
 .mini .cd b{font-size:15px}.mini .cd i{font-size:15px}.mini .cd em,.mini .cd u{display:none}.mini .cd.joker b{font-size:12px}
@@ -671,7 +680,7 @@ const I18N = {
     start: '开始游戏', waitFour: '等待4人坐满', leave: '离开座位', myCount: '{n} 张', left: '剩 {n} 张', claim: '这是我的座位',
     tomatoAria: '向{name}扔番茄', tomatoTitle: '扔番茄', coffeeAria: '给{name}倒咖啡', coffeeTitle: '倒咖啡', thinking: '出牌中…', pass: '不出',
     tribRule: '两张进贡牌：大的给头游，小的给二游', tribPicking: '正在挑选进贡的牌', tribWaitRet: '进贡了 {card}，等待还贡', tribDone: '进贡 {card}，已收到还贡',
-    tribToEither: '头游或二游', tribHanded: '交出了 {card}，等另一张进贡牌', tribPanel: '第 {r} 局 · 进贡与还贡', roundOver: '第 {r} 局结束',
+    tribToEither: '头游或二游', tribHanded: '交出了 {card}，等另一张进贡牌', tribPanel: '第 {r} 局 · 进贡与还贡', roundOver: '第 {r} 局结束', rvTitle: '本局剩余手牌（全部明牌）', rvOut: '已出完', rvCount: '剩 {n} 张',
     nextRound: '开始下一局', waitNext: '等待玩家开始下一局', resetLobby: '重置，回到选座大厅', yourTurn: '轮到你出牌', free: '（自由出牌）',
     waitFor: '等待 {name} 出牌', tribPhase: '进贡阶段', roundEnd: '本局结束', statusRound: '第 {r} 局 · 本局打', bothFrom2: '两队都从2开始',
     teamLevel: '{team}的级', wilds: '♥{L}、♦{L} 是万能牌', orderLine: '{pos}：{name}（{team}）',
@@ -712,7 +721,7 @@ const I18N = {
     start: 'Start game', waitFour: 'Waiting for 4 players', leave: 'Leave seat', myCount: '{n} cards', left: '{n} left', claim: 'This is my seat',
     tomatoAria: 'Throw a tomato at {name}', tomatoTitle: 'Throw a tomato', coffeeAria: 'Pour coffee for {name}', coffeeTitle: 'Pour coffee', thinking: 'Thinking…', pass: 'Pass',
     tribRule: 'Two tribute cards: the higher goes to 1st out, the lower to 2nd out', tribPicking: 'choosing a tribute card', tribWaitRet: 'paid {card}, waiting for a card back', tribDone: 'paid {card}, card returned',
-    tribToEither: '1st or 2nd out', tribHanded: 'handed in {card}, waiting for the other tribute', tribPanel: 'Round {r} · Tribute', roundOver: 'Round {r} finished',
+    tribToEither: '1st or 2nd out', tribHanded: 'handed in {card}, waiting for the other tribute', tribPanel: 'Round {r} · Tribute', roundOver: 'Round {r} finished', rvTitle: 'Cards left this round (all revealed)', rvOut: 'Out', rvCount: '{n} left',
     nextRound: 'Start next round', waitNext: 'Waiting for a player to start the next round', resetLobby: 'Reset and return to the lobby', yourTurn: 'Your turn', free: ' (free lead)',
     waitFor: 'Waiting for {name}', tribPhase: 'Tribute', roundEnd: 'Round over', statusRound: 'Round {r} · Playing level', bothFrom2: 'both teams start at 2',
     teamLevel: "{team}'s level", wilds: '♥{L} and ♦{L} are wild', orderLine: '{pos}: {name} ({team})',
@@ -1239,6 +1248,18 @@ function panelHTML(st, me) {
   return `<div class="center"><div class="lv">${G.rname(g.L)}</div></div>`;
 }
 
+// 一局结束后：所有人的剩余手牌全部明牌，方便复盘
+function revealHTML(st) {
+  const g = st.g, p = st.prev;
+  if (!g || !p || (st.phase !== 'roundEnd' && st.phase !== 'matchEnd')) return '';
+  const rows = p.order.map((s, i) => {
+    const h = G.sortHand(g.hands[s] || [], g.L);
+    const cards = h.length ? `<div class="mini">${h.map((id) => cardEl(id, g.L)).join('')}</div>` : `<span class="rv-out">${esc(T('rvOut'))}</span>`;
+    return `<div class="rv-row"><div class="rv-name"><span class="badge">${esc(posName(i))}</span>${esc(seatName(st, s))}<span class="tg t${G.team(s)}">${esc(teamName(G.team(s)))}</span>${h.length ? `<small>${esc(T('rvCount', { n: h.length }))}</small>` : ''}</div><div class="rv-cards">${cards}</div></div>`;
+  }).join('');
+  return `<div class="handwrap leftover"><h3>${esc(T('rvTitle'))}</h3>${rows}</div>`;
+}
+
 function gameHTML(st, me) {
   const g = st.g;
   const base = me >= 0 ? me : 0;
@@ -1252,8 +1273,8 @@ function gameHTML(st, me) {
   const L = G.rname(g.L);
   const status = `<div class="status"><span>${esc(T('statusRound', { r: st.round }))}</span><span class="lvbig">${L}</span><span>${esc(g.lt < 0 ? T('bothFrom2') : T('teamLevel', { team: teamName(g.lt) }))} · ${esc(T('wilds', { L }))}</span><span class="turnmsg">${esc(turnMsg)}${st.phase === 'play' && remaining(st) != null ? ' · ' + timerHTML(st) + esc(T('secs')) : ''}</span>${me >= 0 && !st.paused && (st.phase === 'play' || st.phase === 'tribute') ? `<button class="btn sec small" data-act="pause">${esc(T('pauseBtn'))}</button>` : ''}</div>`;
   const table = `<div class="felt table">${seats.map((s, k) => playerHTML(st, s, pos[k], me)).join('')}<div class="mid">${seats.map((s, k) => slotHTML(st, s, pos[k])).join('')}${panelHTML(st, me)}</div></div>`;
-  if (me < 0) return status + table + `<div class="handwrap"><span class="small">${esc(T('spectate'))}</span></div>`;
-  return status + table + handHTML(st, me);
+  if (me < 0) return status + table + revealHTML(st) + `<div class="handwrap"><span class="small">${esc(T('spectate'))}</span></div>`;
+  return status + table + revealHTML(st) + handHTML(st, me);
 }
 
 function handHTML(st, me) {

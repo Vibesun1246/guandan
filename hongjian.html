@@ -89,6 +89,15 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;padding:0 m
 .cd.up{transform:translateY(-16px);box-shadow:0 6px 12px rgba(0,0,0,.35)}
 .cd.sweep{filter:brightness(.82);outline:2px solid #3b82f6;outline-offset:-2px}
 button.cd{cursor:pointer;font:inherit}
+.leftover{margin-top:14px}
+.leftover h3{margin:0 0 10px;font:700 17px/1.2 "Noto Serif SC",serif}
+.rv-row{display:grid;grid-template-columns:minmax(120px,200px) minmax(0,1fr);gap:8px 14px;align-items:center;padding:10px 0;border-top:1px dashed var(--line)}
+.rv-row:first-of-type{border-top:0}
+.rv-name{font-weight:700;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.rv-name small{font-weight:500;color:var(--sub);font-size:13px}
+.rv-cards .mini{flex-wrap:wrap;row-gap:8px}
+.rv-out{color:var(--sub);font-weight:700}
+@media(max-width:600px){.rv-row{grid-template-columns:minmax(0,1fr)}}
 .mini{display:flex;padding-left:22px}
 .mini .cd{width:40px;height:58px;margin-left:-22px;padding:2px 4px;border-radius:6px}
 .mini .cd b{font-size:15px}.mini .cd i{font-size:15px}.mini .cd em,.mini .cd u{display:none}.mini .cd.joker b{font-size:12px}
@@ -275,7 +284,7 @@ const I18N = {
     lobbyHelp: '选一个座位坐下。队伍是暗的：拿到红A（♥A、♦A）的人是一队，一个人拿到两张红A就一打三。先出完的一队获胜。',
     waitFour: '等待4人坐满', leave: '离开座位', myCount: '{n} 张', left: '剩 {n} 张', claim: '这是我的座位',
     tomatoAria: '向{name}扔番茄', tomatoTitle: '扔番茄', coffeeAria: '给{name}倒咖啡', coffeeTitle: '倒咖啡', thinking: '出牌中…', pass: '不出',
-    roundOver: '第 {r} 局结束', resetLobby: '重置，回到选座大厅', yourTurn: '轮到你出牌', free: '（自由出牌）',
+    roundOver: '第 {r} 局结束', rvTitle: '本局剩余手牌（全部明牌）', rvOut: '已出完', rvCount: '剩 {n} 张', resetLobby: '重置，回到选座大厅', yourTurn: '轮到你出牌', free: '（自由出牌）',
     waitFor: '等待 {name} 出牌', tribPhase: '进贡阶段', roundEnd: '本局结束', statusRound: '第 {r} 局', target: '先到 {n} 分获胜',
     orderLine: '{pos}：{name}', redTag: '红A', redWhere: '红A在：{who}', soloTag: '一打三',
     spectate: '你在观战。如果你是这桌的玩家、只是换了设备或浏览器，填好和之前一样的昵称，再点自己座位上的“这是我的座位”。',
@@ -323,7 +332,7 @@ const I18N = {
     lobbyHelp: 'Pick a seat. Teams are hidden: whoever holds a red Ace (A♥, A♦) is on the same team. One player with both red Aces plays 1 vs 3. The first team to play out all its cards wins.',
     waitFour: 'Waiting for 4 players', leave: 'Leave seat', myCount: '{n} cards', left: '{n} left', claim: 'This is my seat',
     tomatoAria: 'Throw a tomato at {name}', tomatoTitle: 'Throw a tomato', coffeeAria: 'Pour coffee for {name}', coffeeTitle: 'Pour coffee', thinking: 'Thinking…', pass: 'Pass',
-    roundOver: 'Round {r} finished', resetLobby: 'Reset and return to the lobby', yourTurn: 'Your turn', free: ' (free lead)',
+    roundOver: 'Round {r} finished', rvTitle: 'Cards left this round (all revealed)', rvOut: 'Out', rvCount: '{n} left', resetLobby: 'Reset and return to the lobby', yourTurn: 'Your turn', free: ' (free lead)',
     waitFor: 'Waiting for {name}', tribPhase: 'Tribute', roundEnd: 'Round over', statusRound: 'Round {r}', target: 'first to {n} points wins',
     orderLine: '{pos}: {name}', redTag: 'Red A', redWhere: 'Red Aces were with: {who}', soloTag: '1 vs 3',
     spectate: "You're watching. If you're one of the players and just switched device or browser, enter the same nickname as before, then tap “This is my seat” on your seat.",
@@ -893,6 +902,19 @@ function panelHTML(st, me) {
   return `<div class="center"><div class="lv">${esc(T('h1'))}</div></div>`;
 }
 
+// 一局结束后：所有人的剩余手牌全部明牌，方便复盘
+function revealHTML(st) {
+  const g = st.g, p = st.prev;
+  if (!g || !p || !roundOver(st)) return '';
+  const rows = p.order.map((s, i) => {
+    const h = H.sortHand(g.hands[s] || []);
+    const cards = h.length ? `<div class="mini">${h.map((id) => cardEl(id)).join('')}</div>` : `<span class="rv-out">${esc(T('rvOut'))}</span>`;
+    const red = p.red && p.red.includes(s) ? `<span class="tg red">${esc(T('redTag'))}</span>` : '';
+    return `<div class="rv-row"><div class="rv-name"><span class="badge">${esc(posName(i))}</span>${esc(seatName(st, s))}${red}${h.length ? `<small>${esc(T('rvCount', { n: h.length }))}</small>` : ''}</div><div class="rv-cards">${cards}</div></div>`;
+  }).join('');
+  return `<div class="handwrap leftover"><h3>${esc(T('rvTitle'))}</h3>${rows}</div>`;
+}
+
 function gameHTML(st, me) {
   const g = st.g;
   const base = me >= 0 ? me : 0;
@@ -904,8 +926,8 @@ function gameHTML(st, me) {
   else if (st.phase === 'tribute') turnMsg = T('tribPhase');
   const status = `<div class="status"><span>${esc(T('statusRound', { r: st.round }))}</span><span class="lvbig">${esc(T('h1'))}</span><span>${esc(T('target', { n: H.TARGET }))}</span><span class="turnmsg">${esc(turnMsg)}${st.phase === 'play' && !st.paused && remaining(st) != null ? ' · ' + timerHTML(st) + esc(T('secs')) : ''}</span>${me >= 0 && !st.paused && (st.phase === 'play' || st.phase === 'tribute') ? `<button class="btn sec small" data-act="pause">${esc(T('pauseBtn'))}</button>` : ''}</div>`;
   const table = `<div class="felt table">${seats.map((s, k) => playerHTML(st, s, pos[k], me)).join('')}<div class="mid">${seats.map((s, k) => slotHTML(st, s, pos[k])).join('')}${panelHTML(st, me)}</div></div>`;
-  if (me < 0) return status + table + `<div class="handwrap"><span class="small">${esc(T('spectate'))}</span></div>`;
-  return status + table + handHTML(st, me);
+  if (me < 0) return status + table + revealHTML(st) + `<div class="handwrap"><span class="small">${esc(T('spectate'))}</span></div>`;
+  return status + table + revealHTML(st) + handHTML(st, me);
 }
 
 // 进贡阶段我要做什么：{ kind: 'give'|'ret', n } 或 null

@@ -89,6 +89,15 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;padding:0 m
 .cd.up{transform:translateY(-16px);box-shadow:0 6px 12px rgba(0,0,0,.35)}
 .cd.sweep{filter:brightness(.82);outline:2px solid #3b82f6;outline-offset:-2px}
 button.cd{cursor:pointer;font:inherit}
+.leftover{margin-top:14px}
+.leftover h3{margin:0 0 10px;font:700 17px/1.2 "Noto Serif SC",serif}
+.rv-row{display:grid;grid-template-columns:minmax(120px,200px) minmax(0,1fr);gap:8px 14px;align-items:center;padding:10px 0;border-top:1px dashed var(--line)}
+.rv-row:first-of-type{border-top:0}
+.rv-name{font-weight:700;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.rv-name small{font-weight:500;color:var(--sub);font-size:13px}
+.rv-cards .mini{flex-wrap:wrap;row-gap:8px}
+.rv-out{color:var(--sub);font-weight:700}
+@media(max-width:600px){.rv-row{grid-template-columns:minmax(0,1fr)}}
 .mini{display:flex;padding-left:22px}
 .mini .cd{width:40px;height:58px;margin-left:-22px;padding:2px 4px;border-radius:6px}
 .mini .cd b{font-size:15px}.mini .cd i{font-size:15px}.mini .cd em,.mini .cd u{display:none}.mini .cd.joker b{font-size:12px}
@@ -306,7 +315,7 @@ const I18N = {
     lobbyHelp: '三人一桌。叫地主、抢地主后，地主一个人对两个农民。底分2分，抢地主、炸弹、王炸、春天都会翻倍；地主确定后每人可以选择加倍。分数一直累计。',
     waitThree: '等待3人坐满', leave: '离开座位', myCount: '{n} 张', left: '剩 {n} 张', claim: '这是我的座位',
     tomatoAria: '向{name}扔番茄', tomatoTitle: '扔番茄', coffeeAria: '给{name}倒咖啡', coffeeTitle: '倒咖啡', thinking: '出牌中…', bidThinking: '考虑中…', considering: '考虑中…', pass: '不出',
-    roundOver: '第 {r} 局结束', yourTurn: '轮到你出牌', free: '（自由出牌）',
+    roundOver: '第 {r} 局结束', rvTitle: '本局剩余手牌（全部明牌）', rvOut: '已出完', rvCount: '剩 {n} 张', yourTurn: '轮到你出牌', free: '（自由出牌）',
     waitFor: '等待 {name} 出牌', roundEnd: '本局结束', statusRound: '第 {r} 局',
     spectate: '你在观战。如果你是这桌的玩家、只是换了设备或浏览器，填好和之前一样的昵称，再点自己座位上的“这是我的座位”。',
     store: '存储区', toStore: '放进存储区', unstore: '移回手牌', play: '出牌', clear: '清空选择', beatHint: '要管上 {name} 的{label} {key}',
@@ -356,7 +365,7 @@ const I18N = {
     lobbyHelp: 'Three players. After calling and grabbing, the landlord plays alone against two farmers. Base score 2; every grab, bomb, rocket and spring doubles it, and once the landlord is set everyone may choose to double. Scores keep adding up.',
     waitThree: 'Waiting for 3 players', leave: 'Leave seat', myCount: '{n} cards', left: '{n} left', claim: 'This is my seat',
     tomatoAria: 'Throw a tomato at {name}', tomatoTitle: 'Throw a tomato', coffeeAria: 'Pour coffee for {name}', coffeeTitle: 'Pour coffee', thinking: 'Thinking…', bidThinking: 'Deciding…', considering: 'Deciding…', pass: 'Pass',
-    roundOver: 'Round {r} finished', yourTurn: 'Your turn', free: ' (free lead)',
+    roundOver: 'Round {r} finished', rvTitle: 'Cards left this round (all revealed)', rvOut: 'Out', rvCount: '{n} left', yourTurn: 'Your turn', free: ' (free lead)',
     waitFor: 'Waiting for {name}', roundEnd: 'Round over', statusRound: 'Round {r}',
     spectate: "You're watching. If you're one of the players and just switched device or browser, enter the same nickname as before, then tap “This is my seat” on your seat.",
     store: 'Storage', toStore: 'Move to storage', unstore: 'Back to hand', play: 'Play', clear: 'Clear selection', beatHint: "Beat {name}'s {label} {key}",
@@ -947,8 +956,7 @@ function resultHTML(st, me) {
   const rows = SEATS.map((s) => {
     const d = p.delta[s];
     const tags = (s === p.lord ? lordTag() : farmTag()) + (p.dbl[s] ? dblTag() : '');
-    const left = p.left[s].length ? `<div class="mini">${p.left[s].map((id) => cardEl(id)).join('')}</div>` : '';
-    return `<li><b>${esc(seatName(st, s))}</b>${tags}<span class="dl ${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : ''}${d}</span>${left}</li>`;
+    return `<li><b>${esc(seatName(st, s))}</b>${tags}<span class="dl ${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : ''}${d}</span></li>`;
   }).join('');
   const title = T(p.lordWin ? 'lordWinT' : 'farmWinT') + (p.spring ? ' · ' + T('springT') : p.anti ? ' · ' + T('antiT') : '');
   const dn = p.dbl.some(Boolean) ? `<div class="bd">${esc(T('dblNote'))}</div>` : '';
@@ -967,6 +975,19 @@ function panelHTML(st, me) {
   return `<div class="center"><div class="lv">${esc(T('h1'))}</div></div>`;
 }
 
+// 一局结束后：所有人的剩余手牌全部明牌，方便复盘（地主排第一）
+function revealHTML(st) {
+  const p = st.prev;
+  if (!p || st.phase !== 'roundEnd' || !p.left) return '';
+  const order = [p.lord, ...SEATS.filter((s) => s !== p.lord)];
+  const rows = order.map((s) => {
+    const h = p.left[s] || [];
+    const cards = h.length ? `<div class="mini">${h.map((id) => cardEl(id)).join('')}</div>` : `<span class="rv-out">${esc(T('rvOut'))}</span>`;
+    return `<div class="rv-row"><div class="rv-name">${esc(seatName(st, s))}${s === p.lord ? lordTag() : farmTag()}${h.length ? `<small>${esc(T('rvCount', { n: h.length }))}</small>` : ''}</div><div class="rv-cards">${cards}</div></div>`;
+  }).join('');
+  return `<div class="handwrap leftover"><h3>${esc(T('rvTitle'))}</h3>${rows}</div>`;
+}
+
 function gameHTML(st, me) {
   const g = st.g;
   const base = me >= 0 ? me : 0;
@@ -982,8 +1003,8 @@ function gameHTML(st, me) {
   const canPause = me >= 0 && !st.paused && ['bid', 'double', 'play'].includes(st.phase);
   const status = `<div class="status"><span>${esc(T('statusRound', { r: st.round }))}</span><span class="lvbig">${esc(T('h1'))}</span><span>${esc(T('baseLine', { b: H.BASE }))}</span><span class="turnmsg">${esc(turnMsg)}${tm && !st.paused ? ' · ' + tm + esc(T('secs')) : ''}</span>${canPause ? `<button class="btn sec small" data-act="pause">${esc(T('pauseBtn'))}</button>` : ''}</div>`;
   const table = `<div class="felt table ${st.phase === 'roundEnd' ? 'ended' : ''}">${seats.map((s, k) => playerHTML(st, s, pos[k], me)).join('')}${dipaiHTML(st)}<div class="mid">${seats.map((s, k) => slotHTML(st, s, pos[k])).join('')}${panelHTML(st, me)}</div></div>`;
-  if (me < 0) return status + table + `<div class="handwrap"><span class="small">${esc(T('spectate'))}</span></div>`;
-  return status + table + handHTML(st, me);
+  if (me < 0) return status + table + revealHTML(st) + `<div class="handwrap"><span class="small">${esc(T('spectate'))}</span></div>`;
+  return status + table + revealHTML(st) + handHTML(st, me);
 }
 
 function handHTML(st, me) {
