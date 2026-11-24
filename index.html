@@ -32,6 +32,7 @@ main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;padding
 .game{border:12px solid var(--wood);border-radius:30px;box-shadow:inset 0 0 40px rgba(0,0,0,.45),0 10px 30px rgba(0,0,0,.25);color:#fff;padding:26px 26px 22px;display:flex;flex-direction:column;gap:14px;min-height:330px}
 .gd{background:radial-gradient(ellipse at 50% 40%,#1c7a4c,#13603b 55%,#0b3f26)}
 .hj{background:radial-gradient(ellipse at 50% 40%,#6e1d2a,#561421 55%,#350912)}
+.ddz{background:radial-gradient(ellipse at 50% 40%,#3a556b,#2a4256 55%,#172838)}
 .game h2{font:900 46px/1 "Noto Serif SC",serif;margin:0;letter-spacing:.06em}
 .game h2 small{font:500 15px "Noto Sans SC",sans-serif;opacity:.8;margin-left:10px;letter-spacing:0}
 .game p{margin:0;font-size:15px;opacity:.92;max-width:34em}
@@ -40,6 +41,8 @@ main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;padding
 .cd b{font-size:18px}.cd i{font-style:normal;font-size:19px;margin-top:2px}
 .cd.red{color:#c8102e}
 .fan .cd:nth-child(1){transform:rotate(-12deg) translateY(6px)}.fan .cd:nth-child(2){transform:rotate(-5deg) translateY(1px)}.fan .cd:nth-child(3){transform:rotate(3deg)}.fan .cd:nth-child(4){transform:rotate(11deg) translateY(5px)}
+.cd.jk b{font-size:13px;line-height:1.05;writing-mode:vertical-rl;align-self:flex-start}
+.ddz .fan .cd:nth-child(4){outline:3px solid rgba(232,180,58,.95);outline-offset:2px;box-shadow:0 0 12px 3px rgba(232,180,58,.5)}
 .hj .fan .cd:nth-child(4){outline:3px solid rgba(255,150,160,.95);outline-offset:2px;box-shadow:0 0 12px 3px rgba(255,110,128,.6)}
 .rooms{display:flex;flex-wrap:wrap;gap:10px;margin-top:auto}
 .room{flex:1 1 150px;display:flex;flex-direction:column;gap:2px;padding:12px 16px;border-radius:14px;background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.22);color:#fff;text-decoration:none;font-weight:700;min-height:64px;transition:background .15s}
@@ -75,6 +78,15 @@ main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;padding
       <a class="room" href="hongjian.html#room2"><b data-i18n="room2">2号房间</b><span data-st="h2">…</span></a>
     </div>
   </section>
+  <section class="game ddz" aria-labelledby="ddzT">
+    <h2 id="ddzT"><span data-i18n="ddz">斗地主</span><small data-i18n="ddzTag">1 对 2 · 三人一桌</small></h2>
+    <div class="fan" aria-hidden="true"><span class="cd"><b>2</b><i>♠</i></span><span class="cd red"><b>2</b><i>♥</i></span><span class="cd jk"><b>小王</b></span><span class="cd red jk"><b>大王</b></span></div>
+    <p data-i18n="ddzText">叫地主、抢地主，地主一个人对两个农民。炸弹、王炸、春天都翻倍，还可以加倍。分数一直累计。</p>
+    <div class="rooms">
+      <a class="room" href="doudizhu.html#room1"><b data-i18n="room1">1号房间</b><span data-st="d1" data-max="3">…</span></a>
+      <a class="room" href="doudizhu.html#room2"><b data-i18n="room2">2号房间</b><span data-st="d2" data-max="3">…</span></a>
+    </div>
+  </section>
 </main>
 <script type="module">
 const firebaseConfig = {
@@ -89,14 +101,16 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 const I18N = {
-  zh: { title: '好友牌局', h1: '好友牌局', sub: '选一个游戏，进房间，和朋友开打', langBtn: 'English', gd: '掼蛋', gdTag: '2 对 2 · 两副牌', hj: '红尖', hjTag: '暗中组队 · 一副牌',
+  zh: { title: '好友牌局', h1: '好友牌局', sub: '选一个游戏，进房间，和朋友开打', langBtn: 'English', gd: '掼蛋', gdTag: '2 对 2 · 两副牌', hj: '红尖', hjTag: '暗中组队 · 一副牌', ddz: '斗地主', ddzTag: '1 对 2 · 三人一桌',
+    ddzText: '叫地主、抢地主，地主一个人对两个农民。炸弹、王炸、春天都翻倍，还可以加倍。分数一直累计。',
     gdText: '对家是队友，打级升级，先过A的一队赢。♥和♦的级牌是万能牌。',
     hjText: '斗地主的出牌规则。拿到红A（♥A、♦A）的人是一队，谁和谁一队要靠观察猜；一人拿两张红A就一打三。先到11分获胜。',
-    music: '背景音乐', musicAria: '背景音乐音量', room1: '1号房间', room2: '2号房间', people: '{n}/4 人', inGame: '对局中 · {n}/4 人', loading: '…' },
-  en: { title: 'Card Night', h1: 'Card Night', sub: 'Pick a game, join a room, play with friends', langBtn: '中文', gd: 'Guandan', gdTag: '2 vs 2 · two decks', hj: 'Red A', hjTag: 'hidden teams · one deck',
+    music: '背景音乐', musicAria: '背景音乐音量', room1: '1号房间', room2: '2号房间', people: '{n}/{m} 人', inGame: '对局中 · {n}/{m} 人', loading: '…' },
+  en: { title: 'Card Night', h1: 'Card Night', sub: 'Pick a game, join a room, play with friends', langBtn: '中文', gd: 'Guandan', gdTag: '2 vs 2 · two decks', hj: 'Red A', hjTag: 'hidden teams · one deck', ddz: 'Dou Dizhu', ddzTag: '1 vs 2 · three players',
+    ddzText: 'Call and grab the landlord, who then plays alone against two farmers. Bombs, rockets and springs double the score, and players may double. Scores keep adding up.',
     gdText: 'Partners sit across. Climb the levels — the first team to pass A wins. Red level cards (♥, ♦) are wild.',
     hjText: 'Dou Dizhu card play. Whoever holds a red Ace (A♥, A♦) is on the same team — work out who from the cards they play. Both red Aces means 1 vs 3. First to 11 points wins.',
-    music: 'Music', musicAria: 'Music volume', room1: 'Room 1', room2: 'Room 2', people: '{n}/4 seated', inGame: 'In game · {n}/4', loading: '…' },
+    music: 'Music', musicAria: 'Music volume', room1: 'Room 1', room2: 'Room 2', people: '{n}/{m} seated', inGame: 'In game · {n}/{m}', loading: '…' },
 };
 let lang = 'zh';
 try { const v = JSON.parse(localStorage.getItem('gd-lang')); if (I18N[v]) lang = v; else if (!/^zh/i.test(navigator.language || '')) lang = 'en'; } catch (e) {}
@@ -112,7 +126,8 @@ function render() {
     if (s === undefined) { el.textContent = T('loading'); el.className = ''; return; }
     const n = s ? s.seats.filter(Boolean).length : 0;
     const busy = s && s.phase !== 'lobby';
-    el.textContent = busy ? T('inGame', { n }) : T('people', { n });
+    const m = el.dataset.max || 4;
+    el.textContent = busy ? T('inGame', { n, m }) : T('people', { n, m });
     el.className = busy ? 'busy' : '';
   });
 }
@@ -175,7 +190,7 @@ try {
   onAuthStateChanged(auth, (u) => {
     if (!u || on) return;
     on = true;
-    for (const r of ['r1', 'r2', 'h1', 'h2']) {
+    for (const r of ['r1', 'r2', 'h1', 'h2', 'd1', 'd2']) {
       onSnapshot(doc(db, 'rooms', r), (snap) => { try { st[r] = snap.exists() ? JSON.parse(snap.data().s) : null; } catch (e) { st[r] = null; } render(); }, () => { st[r] = null; render(); });
     }
   });

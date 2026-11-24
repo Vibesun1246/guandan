@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>斗地主 · 好友联机</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&family=Noto+Serif+SC:wght@700;900&display=swap" rel="stylesheet">
+<style>
+/* VOICE: 牌桌上的热闹，但规则清楚、不花哨
+   IDEA: 一张真实的牌桌——墨蓝呢面、木质桌沿、纸牌
+   PICTURE: 三人牌桌：上家左上、下家右上、自己在下方，底牌在桌面正上方
+   COLOUR and TYPE: 偏灰的墨蓝呢面 + 木色桌沿 + 金色地主标志；Noto Serif SC 标题，Noto Sans SC 正文
+   LAYOUT: 顶部昵称与声音开关，中间牌桌，下方手牌与存储区，右侧积分、聊天和记录 */
+:root{color-scheme:light dark;--bg:light-dark(#ebe4d3,#07160f);--ink:light-dark(#1d2a22,#e9efe9);--sub:light-dark(#5b6b60,#9fb2a6);--panel:light-dark(#fffaf0,#0f2419);--line:light-dark(#d6ccb5,#24412f);--felt:#13603b;--felt2:#0b3f26;--wood:#6b4423;--gold:#e8b43a;--red:#c8102e;--a:#e8b43a;--b:#6fc3ff}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Noto Sans SC",system-ui,sans-serif;overflow-x:clip}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding:14px max(4vw,14px)}
+h1{font:900 34px/1.05 "Noto Serif SC",serif;margin:0;letter-spacing:.04em}
+h1 small{font:500 14px "Noto Sans SC",sans-serif;color:var(--sub);margin-left:8px;letter-spacing:0}
+.tabs{display:flex;gap:8px;margin-left:auto}
+.tab{min-height:44px;padding:6px 16px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-weight:700}
+.tab[aria-pressed=true]{background:var(--felt);color:#fff;border-color:var(--felt)}
+.tab span{font-weight:400;font-size:13px;opacity:.8;margin-left:6px}
+.nickbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:0 max(4vw,14px) 14px;max-width:1320px;margin:0 auto}
+.nickbar label{font-weight:700}
+.nickbar input{font:inherit;font-size:16px;min-height:44px;padding:6px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);width:170px}
+.snd{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+.vol{display:flex;align-items:center;gap:8px;padding:4px 12px 4px 4px;border-radius:999px;border:1px solid var(--line);background:var(--panel)}
+.vol button{min-height:36px;padding:2px 12px;border-radius:999px;border:0;background:transparent;color:var(--sub);font-size:14px;white-space:nowrap}
+.vol button[aria-pressed=true]{background:var(--felt);color:#fff}
+.vol input{width:96px;accent-color:var(--felt);height:28px}
+.vol output{font-size:12px;color:var(--sub);width:2.4em;text-align:right;font-variant-numeric:tabular-nums}
+.vol.off input,.vol.off output{opacity:.4}
+main{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;padding:0 max(4vw,14px) 28px;max-width:1320px;margin:0 auto}
+@media(max-width:900px){main{grid-template-columns:minmax(0,1fr)}}
+.status{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;margin-bottom:10px;font-size:15px}
+.status .lvbig{font:900 30px/1 "Noto Serif SC",serif;color:var(--felt)}
+:root[data-theme=dark] .status .lvbig{color:var(--gold)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .status .lvbig{color:var(--gold)}}
+.status .turnmsg{font-weight:700;margin-left:auto}
+.felt{background:radial-gradient(ellipse at 50% 45%,#1c7a4c,var(--felt) 50%,var(--felt2));border:12px solid var(--wood);border-radius:30px;box-shadow:inset 0 0 40px rgba(0,0,0,.45),0 10px 30px rgba(0,0,0,.25);color:#f3f7f2;position:relative}
+.table{display:grid;grid-template-columns:150px minmax(0,1fr) 150px;grid-template-rows:auto minmax(330px,1fr) auto;grid-template-areas:". top ." "left mid right" ". bot .";gap:10px;padding:14px}
+.pl{position:relative;border-radius:14px;padding:8px 10px;background:rgba(0,0,0,.2);border:2px solid transparent;display:flex;flex-direction:column;gap:3px;align-items:center;text-align:center;align-self:center;justify-self:center;width:100%;max-width:240px}
+.pl.turn{border-color:var(--gold);box-shadow:0 0 18px rgba(232,180,58,.55)}
+.pos-top{grid-area:top}.pos-left{grid-area:left}.pos-right{grid-area:right}.pos-bot{grid-area:bot}
+.nm{font-weight:700;font-size:15px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center}
+.tg{font-size:12px;font-weight:700;padding:1px 7px;border-radius:6px;color:#10231a}
+.tg.t0{background:var(--a)}.tg.t1{background:var(--b)}
+.meta{font-size:13px;color:#cfe3d6}
+.meta .warn{color:#ffd36b;font-weight:700}
+.badge{background:var(--gold);color:#3a2600;font-weight:900;font-size:13px;padding:1px 8px;border-radius:6px}
+.mid{grid-area:mid;position:relative;min-height:330px}
+.slot{position:absolute;display:flex;flex-direction:column;align-items:center;gap:3px}
+.slot.old{opacity:.4}
+.s-top{top:4px;left:50%;transform:translateX(-50%)}
+.s-bot{bottom:4px;left:50%;transform:translateX(-50%)}
+.s-left{left:4px;top:50%;transform:translateY(-50%)}
+.s-right{right:4px;top:50%;transform:translateY(-50%);align-items:center}
+.slot small{font-size:13px;font-weight:700;color:#fff;background:rgba(0,0,0,.3);padding:0 8px;border-radius:6px}
+.ps{font-weight:900;color:#e2efe6;font-size:18px;padding:12px 14px;border-radius:12px;background:rgba(0,0,0,.18)}
+.timer{font-variant-numeric:tabular-nums;font-weight:900}.timer.low{color:#e5484d}
+.think .timer{font-size:20px;color:#ffd36b}.think .timer.low{color:#ff8a8a}
+.status .btn.small{margin-left:4px}
+.panel.paused{background:rgba(6,30,18,.86)}
+.rdy{display:inline-block;margin-top:2px;background:#2fbf71;color:#05301b;font-weight:900;font-size:13px;padding:1px 8px;border-radius:6px}
+.think{font-size:14px;color:#d8e8dd;padding:14px}
+.center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.center .lv{font:900 40px/1 "Noto Serif SC",serif;color:rgba(232,180,58,.35)}
+.panel{position:absolute;inset:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;background:rgba(6,30,18,.72);border-radius:18px;padding:12px;z-index:4}
+.panel .lv{font:900 40px/1 "Noto Serif SC",serif;color:var(--gold)}
+.lvl{font-size:13px;color:#cfe3d6}
+.big{font-weight:700;font-size:17px}
+.btn{min-height:44px;padding:8px 20px;border-radius:12px;border:0;font-weight:700;background:var(--gold);color:#2c1d00}
+.btn.sec{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
+.btn.ghost{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.3)}
+.btn.small{min-height:34px;padding:3px 12px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.cd{width:52px;height:76px;border-radius:7px;background:#fffdf7;color:#1c1c1c;border:1px solid #c9bea5;box-shadow:0 2px 4px rgba(0,0,0,.3);position:relative;display:inline-flex;flex-direction:column;align-items:flex-start;padding:3px 5px;margin-left:-26px;line-height:1;flex:none;transition:transform .12s;user-select:none;-webkit-user-select:none}
+.cd b{font-size:18px;font-weight:900}.cd i{font-style:normal;font-size:19px;margin-top:2px}
+.cd.red{color:var(--red)}
+.cd.joker b{font-size:14px;line-height:1.05;writing-mode:vertical-rl}
+.cd.wild{background:#fff3cc;border:2px solid var(--gold)}
+.cd em{position:absolute;right:3px;bottom:3px;font-style:normal;font-size:11px;font-weight:900;background:var(--gold);color:#3a2600;border-radius:4px;padding:1px 3px}
+.cd u{position:absolute;right:4px;top:3px;text-decoration:none;color:#b8860b;font-size:13px}
+.cd.up{transform:translateY(-16px);box-shadow:0 6px 12px rgba(0,0,0,.35)}
+.cd.sweep{filter:brightness(.82);outline:2px solid #3b82f6;outline-offset:-2px}
+button.cd{cursor:pointer;font:inherit}
+.mini{display:flex;padding-left:22px}
+.mini .cd{width:40px;height:58px;margin-left:-22px;padding:2px 4px;border-radius:6px}
+.mini .cd b{font-size:15px}.mini .cd i{font-size:15px}.mini .cd em,.mini .cd u{display:none}.mini .cd.joker b{font-size:12px}
+.handwrap{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px 16px 14px}
+.hand{display:flex;flex-wrap:wrap;row-gap:10px;padding:18px 0 4px 26px;min-height:96px;touch-action:none}
+.store{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:8px;padding-top:10px;border-top:1px dashed var(--line);align-items:flex-end}
+.store .lab{font-size:13px;font-weight:700;color:var(--sub);align-self:center}
+.grp{display:flex;padding:18px 8px 6px 34px;border-radius:12px;background:light-dark(#efe6cf,#173626);touch-action:none}
+.ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
+.ctrl .hint{color:var(--sub);font-size:14px}
+.choose{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+aside{display:flex;flex-direction:column;gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px 16px}
+.card h3{margin:0 0 8px;font:700 17px/1.2 "Noto Serif SC",serif}
+.team{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.team:first-of-type{border-top:0}
+.team .lvn{font:900 30px/1 "Noto Serif SC",serif;margin-left:auto}
+.team .who{font-size:13px;color:var(--sub)}
+.log{list-style:none;margin:0;padding:0;font-size:14px;max-height:280px;overflow:auto}
+.log li{padding:4px 0;border-top:1px dashed var(--line)}
+.log li:first-child{border-top:0}
+.lobby{padding:22px;min-height:440px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-areas:". s2 ." "s3 info s1" ". s0 .";gap:12px;align-items:center}
+.seat{min-height:96px;border-radius:16px;border:2px dashed rgba(255,255,255,.45);background:rgba(0,0,0,.18);color:#fff;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px}
+.seat.taken{border-style:solid}
+.seat.t0.taken{border-color:var(--a)}.seat.t1.taken{border-color:var(--b)}
+.seat.me{box-shadow:0 0 0 3px #fff inset}
+.seat small{font-weight:400;font-size:13px;opacity:.85}
+.info{grid-area:info;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center}
+.info p{margin:0;font-size:14px;color:#d8e8dd}
+.info .lv{font:900 34px/1 "Noto Serif SC",serif;color:var(--gold)}
+.note{padding:10px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);margin-bottom:12px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1d2a22;color:#fff;padding:10px 18px;border-radius:12px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.35);z-index:9;max-width:90vw}
+.res{list-style:none;padding:0;margin:0;font-size:15px}
+.small{font-size:13px;color:var(--sub)}
+.bubble{position:absolute;left:50%;top:-12px;transform:translate(-50%,-100%);z-index:6;background:#fffdf7;color:#1d2a22;font-weight:700;font-size:15px;padding:8px 12px;border-radius:14px;box-shadow:0 6px 16px rgba(0,0,0,.35);max-width:220px;width:max-content;animation:pop .25s ease-out}
+.bubble::after{content:"";position:absolute;left:50%;bottom:-7px;margin-left:-7px;border:7px solid transparent;border-bottom:0;border-top-color:#fffdf7}
+.bubble.emo{font-size:44px;line-height:1;padding:6px 10px}
+.pos-top .bubble{top:auto;bottom:-12px;transform:translate(-50%,100%);animation:none}
+.pos-top .bubble::after{bottom:auto;top:-7px;border-top:0;border-bottom:7px solid #fffdf7}
+@keyframes pop{from{transform:translate(-50%,-100%) scale(.6);opacity:0}}
+#chatpanel h4{margin:0 0 8px;font:700 15px/1.2 "Noto Serif SC",serif}
+.emos,.says{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.emos button{font-size:26px;width:48px;height:48px;border-radius:12px;border:1px solid var(--line);background:var(--bg)}
+.stks{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.stks button{width:60px;height:60px;border-radius:12px;border:1px solid var(--line);background:var(--bg);padding:4px;display:flex;align-items:center;justify-content:center}
+.stks img{max-width:100%;max-height:100%;border-radius:6px}
+.bubble.stk{padding:6px;line-height:0}.bubble.stk img{width:84px;height:84px;object-fit:contain;border-radius:8px}
+.log img.inl{height:30px;vertical-align:middle;border-radius:4px}
+.says button{min-height:40px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:14px}
+.chatin{display:flex;gap:8px}.chatin input{flex:1;font:inherit;font-size:16px;min-height:44px;padding:6px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.acts{display:flex;gap:6px;justify-content:center;margin-top:2px}
+.acts button{width:34px;height:34px;border-radius:10px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);font-size:18px;line-height:1;padding:0}
+.acts button:hover{background:rgba(255,255,255,.25)}
+.fx{position:fixed;left:0;top:0;pointer-events:none;z-index:20;will-change:transform,opacity}
+.fx svg{display:block}
+.fxlabel{position:fixed;z-index:21;pointer-events:none;background:#fffdf7;color:#5a3317;font-weight:700;font-size:14px;padding:5px 10px;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.3);white-space:nowrap}
+@media(max-width:600px){
+ .acts button{width:28px;height:28px;font-size:15px}
+ h1{font-size:28px}.tabs{margin-left:0}.snd{margin-left:0;width:100%}.vol{flex:1 1 100%}.vol input{flex:1;width:auto}
+ .felt{border-width:8px;border-radius:22px}
+ .table{grid-template-columns:64px minmax(0,1fr) 64px;grid-template-rows:auto minmax(360px,1fr) auto;grid-template-areas:"top top top" "left mid right" "bot bot bot";padding:8px;gap:6px}
+ .pos-left .nm,.pos-right .nm{font-size:13px}
+ .pl{padding:6px 4px}
+ .s-left{top:92px;transform:none}.s-right{top:auto;bottom:92px;transform:none}
+ .mini{padding-left:18px}.mini .cd{width:32px;height:46px;margin-left:-18px}.mini .cd b,.mini .cd i{font-size:12px}
+ .cd{width:42px;height:62px;margin-left:-22px}.cd b{font-size:15px}.cd i{font-size:15px}
+ .hand{padding-left:22px}.grp{padding-left:30px}
+ .lobby{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"info info" "s0 s1" "s2 s3";padding:14px}
+ .center .lv{display:none}
+ .status .turnmsg{margin-left:0;width:100%}
+}
+@media(prefers-reduced-motion:reduce){.cd{transition:none}.bubble{animation:none}}
+/* ===== 斗地主：偏灰的墨蓝色牌桌 ===== */
+:root{--bg:light-dark(#e4e7ea,#0a0f15);--ink:light-dark(#1a2430,#e6ebf0);--sub:light-dark(#596572,#a1adb9);--panel:light-dark(#f8f9fa,#131b24);--line:light-dark(#cdd4db,#28333f);--felt:#2f4a61;--felt2:#16273a}
+.felt{background:radial-gradient(ellipse at 50% 45%,#3a556b,#2a4256 50%,#172838)}
+.meta,.lvl,.info p{color:#d9e2ea}
+.ps{color:#e6eef5}
+.ps.yes{color:#ffd36b}
+.think{color:#dde6ee}
+.panel{background:rgba(10,20,32,.9);overflow:auto;justify-content:safe center}
+.panel.paused{background:rgba(8,16,26,.9)}
+.grp{background:light-dark(#e3e8ee,#1d2a38)}
+.center .lv{color:rgba(232,180,58,.26);font-size:34px}
+.status .lvbig{color:var(--felt)}
+:root[data-theme=dark] .status .lvbig{color:var(--gold)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .status .lvbig{color:var(--gold)}}
+a.tab{display:inline-flex;align-items:center;text-decoration:none}
+.seat{border-color:rgba(255,255,255,.26);background:rgba(0,0,0,.24)}
+.seat.taken{border-color:rgba(232,180,58,.75)}
+.seat.me{box-shadow:0 0 0 2px rgba(232,180,58,.35) inset}
+.pl{background:rgba(0,0,0,.24)}
+/* 3人牌桌：上家在左上，下家在右上，自己在下方，底牌在正上方 */
+.table{grid-template-columns:170px minmax(0,1fr) 170px;grid-template-rows:auto minmax(320px,1fr) auto;grid-template-areas:"left top right" "mid mid mid" ". bot ."}
+.pos-left,.pos-right{align-self:start}
+.s-left{left:4px;top:4px;transform:none;align-items:flex-start}
+.s-right{right:4px;top:4px;transform:none;align-items:flex-end}
+.dipai{grid-area:top;display:flex;flex-direction:column;align-items:center;gap:5px;align-self:start;padding-top:2px}
+.dipai .lab{font-size:12px;font-weight:700;color:#c3d0dc;letter-spacing:.12em}
+.mul{font-size:13px;color:#e6eef5;background:rgba(0,0,0,.28);padding:2px 12px;border-radius:999px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mul b{color:#ffd36b;font-size:15px}
+.cd.back{background:repeating-linear-gradient(45deg,#2b5a7c 0 5px,#21486a 5px 10px);border:2px solid #fffdf7}
+/* 地主 / 农民 / 加倍 / 先叫 标签 */
+.tg.lord{background:var(--gold);color:#3a2600}
+.tg.farm{background:#c9dcec;color:#132433}
+.tg.dbl{background:#ff9f7a;color:#4a1400}
+.tg.first{background:#fffdf7;color:#1a2430}
+/* 拿到决定牌的人：头像亮几下 */
+.pl.firstflash{animation:firstglow .6s ease-in-out 4 both}
+@keyframes firstglow{0%,100%{box-shadow:0 0 0 0 rgba(255,211,107,0)}50%{box-shadow:0 0 24px 7px rgba(255,211,107,.85);border-color:#ffd36b}}
+/* 发牌前亮出决定牌 */
+.reveal .cd{width:84px;height:122px;margin:4px 0;padding:6px 8px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.45);animation:flipin .5s ease-out both}
+.reveal .cd b{font-size:30px}.reveal .cd i{font-size:30px}.reveal .cd.joker b{font-size:22px}
+@keyframes flipin{from{transform:rotateY(90deg) scale(.8);opacity:.2}}
+.hand .cd.deal{animation:dealin .3s ease-out both}
+@keyframes dealin{from{transform:translateY(-40px);opacity:0}}
+.cd.newc{outline:3px solid var(--gold);outline-offset:-1px}
+.dealing{color:var(--sub);font-weight:700;padding:30px 0;text-align:center}
+/* 一局结束 */
+.rows{display:flex;flex-direction:column;gap:6px;width:min(100%,480px)}
+.rows li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(255,255,255,.07);border-radius:10px;padding:6px 10px;text-align:left}
+.rows .dl{margin-left:auto;font:900 22px/1 "Noto Serif SC",serif;font-variant-numeric:tabular-nums}
+.rows .dl.up{color:#86e3a9}.rows .dl.down{color:#ffa3a3}
+.rows .mini{flex:1 1 auto;padding-left:18px;order:2}.rows .dl{order:3}
+.rows .mini .cd{width:30px;height:44px;margin-left:-18px;padding:2px 3px}.rows .mini .cd b,.rows .mini .cd i{font-size:11px}
+.bd{font-size:13px;color:#c8d6e2}
+.table.ended .mid{min-height:400px}
+.status .ttimer,.ctrl .ttimer{color:inherit}.status .ttimer.low,.ctrl .ttimer.low{color:#e5484d}
+.badge.out{background:#86e3a9;color:#0b3a1e}
+.ttimer{font-variant-numeric:tabular-nums;font-weight:900;color:#ffd36b}.ttimer.low{color:#ff8a8a}
+.score{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line)}
+.score:first-of-type{border-top:0}
+.score .pts{font:900 28px/1 "Noto Serif SC",serif;margin-left:auto;font-variant-numeric:tabular-nums}
+.score .last{display:block;font-size:12px;color:var(--sub)}
+.score.lead .pts{color:var(--felt)}
+:root[data-theme=dark] .score.lead .pts{color:var(--gold)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .score.lead .pts{color:var(--gold)}}
+.lobby{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-areas:"s2 . s1" "info info info" ". s0 ."}
+.lobby .info .lv{font-size:30px}
+@media(max-width:600px){
+ .tabs{width:100%;flex-wrap:wrap}.tab{flex:1 1 auto;padding:4px 10px;font-size:14px;white-space:nowrap;justify-content:center}
+ .table{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);grid-template-rows:auto minmax(330px,1fr) auto;grid-template-areas:"left top right" "mid mid mid" "bot bot bot"}
+ .s-left{top:4px}.s-right{top:84px;bottom:auto}
+ .dipai .mini{padding-left:16px}.dipai .mini .cd{width:28px;height:40px;margin-left:-16px}
+ .mul{font-size:12px;padding:1px 8px}
+ .lobby{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"info info" "s2 s1" "s0 s0"}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1><span data-i18n="h1">斗地主</span><small data-i18n="sub">好友联机 · 三人一桌</small></h1>
+  <nav class="tabs">
+    <a class="tab" href="./" data-i18n="hub">← 大厅</a>
+    <button class="tab" data-act="room" data-r="d1" aria-pressed="true"><span data-i18n="room1">1号房间</span><span id="c1"></span></button>
+    <button class="tab" data-act="room" data-r="d2" aria-pressed="false"><span data-i18n="room2">2号房间</span><span id="c2"></span></button>
+    <button class="tab" data-act="lang" data-i18n="langBtn">English</button>
+  </nav>
+</header>
+<div class="nickbar">
+  <label for="nick" data-i18n="nick">你的昵称</label><input id="nick" maxlength="12" placeholder="例如：James" data-i18n-ph="nickPh" autocomplete="nickname">
+  <span class="small" data-i18n="nickHint">入座前先填好</span>
+  <div class="snd">
+    <div class="vol" data-k="music"><button type="button" data-act="snd" data-k="music" aria-pressed="true" data-i18n="music">背景音乐</button><input type="range" min="0" max="100" step="5" data-vol="music" aria-label="背景音乐音量"><output></output></div>
+    <div class="vol" data-k="sfx"><button type="button" data-act="snd" data-k="sfx" aria-pressed="true" data-i18n="sfx">音效</button><input type="range" min="0" max="100" step="5" data-vol="sfx" aria-label="音效音量"><output></output></div>
+    <div class="vol" data-k="voice"><button type="button" data-act="snd" data-k="voice" aria-pressed="true" data-i18n="voice">语音报牌</button><input type="range" min="0" max="100" step="5" data-vol="voice" aria-label="语音报牌音量"><output></output></div>
+  </div>
+</div>
+<main>
+  <section><div id="stage"><div class="note" data-i18n="connecting">正在连接牌桌…</div></div><div id="chatpanel" class="handwrap" hidden></div></section>
+  <aside id="side"></aside>
+</main>
+<div class="toast" id="toast" hidden></div>
+<script src="stickers.js"></script>
+<script src="doudizhu-engine.js"></script>
+<script type="module">
+// ======== 把 Firebase 给你的配置粘贴到下面的大括号里 ========
+const firebaseConfig = {
+  apiKey: "AIzaSyAY-NSXB49J0xsfXDf2cDRCgofb2tu6c5c",
+  authDomain: "guandan-91ca9.firebaseapp.com",
+  projectId: "guandan-91ca9",
+  storageBucket: "guandan-91ca9.firebasestorage.app",
+  messagingSenderId: "1030805706141",
+  appId: "1:1030805706141:web:de466e344b737d41b94b74"
+};
+// ============================================================
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+{
+const H = DDZ;
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const rand = () => crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296;
+const ls = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
+let db = null, uid = null, ready = false, fatal = null;
+let nick = ls.get('gd-nick', '');
+let room = location.hash === '#room2' ? 'd2' : 'd1';
+const ROOMS = ['d1', 'd2'];
+const states = { d1: null, d2: null };
+const evSeen = { d1: null, d2: null };
+let sel = new Set(), choice = null, toastT = 0;
+const opt = Object.assign({ music: true, sfx: true, voice: true }, ls.get('gd-snd', {}));
+const vol = Object.assign({ music: 60, sfx: 70, voice: 50 }, ls.get('gd-vol', {}));
+// 每个滑块的 100% 对应的实际音量（滑块默认值约为原来的大小）
+const MAXV = { music: 0.075, sfx: 0.5, lobby: 0.21 };
+const lobbyVol = () => MAXV.lobby * vol.music / 100;
+
+const I18N = {
+  zh: {
+    title: '斗地主 · 好友联机', h1: '斗地主', sub: '好友联机 · 三人一桌', hub: '← 大厅', room1: '1号房间', room2: '2号房间', inGame: '对局中', people: '{n}/3人',
+    nick: '你的昵称', nickPh: '例如：James', nickHint: '入座前先填好', music: '背景音乐', sfx: '音效', voice: '语音报牌', volAria: '{x}音量', connecting: '正在连接牌桌…',
+    langBtn: 'English', empty: '空座', player: '玩家', you: '（你）',
+    bigJoker: '大王', smallJoker: '小王', jokerFace: ['小王', '大王'],
+    seatClick: '点击坐下', mySeat: '这是你的座位', taken: '已入座',
+    lobbyHelp: '三人一桌。叫地主、抢地主后，地主一个人对两个农民。底分2分，抢地主、炸弹、王炸、春天都会翻倍；地主确定后每人可以选择加倍。分数一直累计。',
+    waitThree: '等待3人坐满', leave: '离开座位', myCount: '{n} 张', left: '剩 {n} 张', claim: '这是我的座位',
+    tomatoAria: '向{name}扔番茄', tomatoTitle: '扔番茄', coffeeAria: '给{name}倒咖啡', coffeeTitle: '倒咖啡', thinking: '出牌中…', bidThinking: '考虑中…', considering: '考虑中…', pass: '不出',
+    roundOver: '第 {r} 局结束', yourTurn: '轮到你出牌', free: '（自由出牌）',
+    waitFor: '等待 {name} 出牌', roundEnd: '本局结束', statusRound: '第 {r} 局',
+    spectate: '你在观战。如果你是这桌的玩家、只是换了设备或浏览器，填好和之前一样的昵称，再点自己座位上的“这是我的座位”。',
+    store: '存储区', toStore: '放进存储区', unstore: '移回手牌', play: '出牌', clear: '清空选择', beatHint: '要管上 {name} 的{label} {key}',
+    leadHint: '你先出，任意合法牌型都可以',
+    notTurn: '还没轮到你，可以先理牌、选好牌', chooseHint: '这手牌有几种出法，选一种：', handTitle: '你的手牌（{n} 张）· 点牌或按住滑过多张牌来选中，再点一次取消',
+    scoresT: '积分', scoreNote: '底分2分，分数一直累计', lastRound: '上一局 {d}', resetTitle: '中途重置', resetText: '3个人都同意后，积分清零，回到选座大厅。目前 {n}/3 人同意。',
+    voteBtn: '申请重置', unvoteBtn: '取消我的申请', chat: '聊天', noChat: '还没有人说话', logT: '牌局记录', noLog: '还没有记录', sep: '：',
+    saved: '进度自动保存在房间里。下次用同一个浏览器打开就能接着打。', noDb: '还没连上数据库，请稍等', denied: '数据库拒绝写入：请检查 Firestore 规则',
+    failed: '操作失败，请重试', chatDenied: '聊天被数据库拒绝：请检查 Firestore 规则里有没有 chat 那一段', chatFail: '消息没发出去，请重试',
+    needNick: '请先在上面填写你的昵称', haveSeat: '你已经有座位了', nickMismatch: '昵称和这个座位不一致，请填和之前完全一样的昵称',
+    noConfig: '还没有填入 Firebase 配置。', noConn: '暂时连不上数据库，请检查网络后刷新页面。',
+    readFail: '读取牌桌失败（{c}）：请检查 Firestore 规则。', fbFail: '连接 Firebase 失败（{c}）：请检查配置和匿名登录是否已开启。',
+    emoTitle: '表情和快捷短语', emoAria: '发送表情 {e}', chatPh: '自己说点什么（最多20字）', send: '发送', seatFirst: '入座后才能发消息', tooFast: '发得太快了，歇一下',
+    coffeeLabel: '请喝一杯卡布奇诺 ☕', actTomato: '向 {name} 扔了一个番茄', actCoffee: '给 {name} 倒了一杯卡布奇诺', yourTurnTitle: '轮到你了 · ',
+    types: { single: '单张', pair: '对子', triple: '三张', t1: '三带一', t2: '三带二', straight: '顺子', pairs: '连对', plane: '飞机', plane1: '飞机带单', plane2: '飞机带对', f2: '四带二', f22: '四带两对', bomb: '炸弹', rocket: '王炸' },
+    keyTo: '到{r}', and: '、', readyBtn: '准备', readyNext: '准备下一局', unready: '取消准备', readyTag: '已准备', readyCount: '已准备 {n}/3', autoDeal: '3人都准备好后自动发牌', secs: '秒',
+    pauseBtn: '暂停', resumeBtn: '继续游戏', pausedTitle: '牌局已暂停', pausedBy: '{name} 按了暂停。大家准备好后，任何一位玩家都可以点“继续游戏”。', pausedHint: '牌局暂停中，暂时不能操作',
+    lord: '地主', farmer: '农民', dblTag: '加倍', firstTag: '先叫 {card}',
+    roundTitle: '第 {r} 局', redealTitle: '第 {r} 局 · 三人都不叫，重新发牌', markTitle: '决定牌', markText: '拿到这张牌的人先叫地主', dealingMsg: '发牌中…',
+    bottomT: '底 牌', baseLine: '底分 {b}', multWord: '倍数',
+    yourBid: '轮到你叫地主', waitBid: '等待 {name} 叫地主', doubling: '选择加倍中',
+    callBtn: '叫地主', nocallBtn: '不叫', grabBtn: '抢地主', nograbBtn: '不抢', dblBtn: '加倍', nodblBtn: '不加倍',
+    bidHintCall: '要不要叫地主？', bidHintGrab: '已经有人叫了地主，要不要抢？每抢一次倍数 ×2', bidHintFinal: '有人抢了你的地主，要抢回来吗？',
+    dblHint: '要不要加倍？超时算不加倍', dblChosen: '你选了“{x}”，等其他人选完', dblYes: '加倍', dblNo: '不加倍',
+    acts: { call: '叫地主', nocall: '不叫', grab: '抢地主', nograb: '不抢' },
+    lordWinT: '地主获胜', farmWinT: '农民获胜', springT: '春天！', antiT: '反春！',
+    bdBase: '底分 {n}', bdGrab: '抢地主 ×{n}', bdBomb: '炸弹 ×{n}', bdSpring: '春天 ×2', bdAnti: '反春 ×2', bdTotal: '每家 {n} 分', outTag: '出完了',
+    dblNote: '加倍的人和地主之间再 ×2（地主加倍对两家都 ×2）',
+    phrases: ['快点出牌呀，等得我都饿了', '这把稳了！', '农民兄弟，顶住！', '地主别跑！', '我是地主我怕谁', '你走，我掩护', '要大牌，别给小的', '我要放大招了', '手气太差了……', '再来一盘！', '配合愉快'],
+    err: { notSeated: '你还没有入座', inGameNoSwap: '游戏进行中，不能换座', seatTaken: '这个座位已经有人了', inGameNoLeave: '游戏进行中，不能离座', started: '游戏已经开始了',
+      needThree: '需要3个人坐满才能开始', notBidding: '现在不是叫地主的时候', notDoubling: '现在不是选择加倍的时候', alreadyChose: '你已经选过了',
+      cantPlay: '现在不能出牌', notYourTurn: '还没轮到你',
+      playNotInHand: '出的牌不在你手里', cantBeat: '管不上，或者这不是有效的牌型', invalidType: '这不是有效的牌型', cantAct: '现在不能操作', mustLead: '你是先手，必须出牌',
+      noResetNeeded: '现在不需要重置', paused: '牌局暂停中，请先继续游戏', cantPause: '现在不能暂停', cantReady: '现在不需要准备' },
+    log: { start: '新的一盘开始，底分2分，分数一直累计', round: '第{r}局：决定牌是 {card}，{s} 先叫地主', redeal: '三人都不叫，重新发牌：决定牌是 {card}，{s} 先叫地主',
+      bid: '{s}：{a}', autoBid: '{s} 超时，自动“{a}”', nobody: '三个人都不叫', lord: '{s} 当地主，底牌是 {cards}', dbl: '{s} 加倍', lead: '{s}（地主）先出牌',
+      bomb: '{s} 出了炸弹，倍数 ×2', rocket: '{s} 出了王炸，倍数 ×2', lordWin: '地主 {s} 获胜，赢 {n} 分', farmWin: '农民获胜，地主 {s} 输 {n} 分', spring: '春天！倍数 ×2', anti: '反春！倍数 ×2',
+      reset: '对局已重置，可以重新选座后开始', vote: '{s} 申请重置（{n}/3）', unvote: '{s} 取消了重置申请',
+      autoPass: '{s} 超时，自动“不出”', autoPlay: '{s} 超时，自动出了 {card}', paused: '{s} 暂停了牌局', resumed: '{s} 继续了牌局' },
+  },
+  en: {
+    title: 'Dou Dizhu · Play with Friends', h1: 'Dou Dizhu', sub: 'Online with friends · 3 players', hub: '← Lobby', room1: 'Room 1', room2: 'Room 2', inGame: 'in game', people: '{n}/3 seated',
+    nick: 'Your nickname', nickPh: 'e.g. James', nickHint: 'Fill this in before taking a seat', music: 'Music', sfx: 'Sound effects', voice: 'Voice calls (Chinese)', volAria: '{x} volume', connecting: 'Connecting to the table…',
+    langBtn: '中文', empty: 'Empty seat', player: 'Player', you: ' (you)',
+    bigJoker: 'Big Joker', smallJoker: 'Small Joker', jokerFace: ['JOKER', 'JOKER'],
+    seatClick: 'Tap to sit', mySeat: 'Your seat', taken: 'Taken',
+    lobbyHelp: 'Three players. After calling and grabbing, the landlord plays alone against two farmers. Base score 2; every grab, bomb, rocket and spring doubles it, and once the landlord is set everyone may choose to double. Scores keep adding up.',
+    waitThree: 'Waiting for 3 players', leave: 'Leave seat', myCount: '{n} cards', left: '{n} left', claim: 'This is my seat',
+    tomatoAria: 'Throw a tomato at {name}', tomatoTitle: 'Throw a tomato', coffeeAria: 'Pour coffee for {name}', coffeeTitle: 'Pour coffee', thinking: 'Thinking…', bidThinking: 'Deciding…', considering: 'Deciding…', pass: 'Pass',
+    roundOver: 'Round {r} finished', yourTurn: 'Your turn', free: ' (free lead)',
+    waitFor: 'Waiting for {name}', roundEnd: 'Round over', statusRound: 'Round {r}',
+    spectate: "You're watching. If you're one of the players and just switched device or browser, enter the same nickname as before, then tap “This is my seat” on your seat.",
+    store: 'Storage', toStore: 'Move to storage', unstore: 'Back to hand', play: 'Play', clear: 'Clear selection', beatHint: "Beat {name}'s {label} {key}",
+    leadHint: 'You lead — any valid combination',
+    notTurn: 'Not your turn yet — you can arrange and pre-select cards', chooseHint: 'These cards can be played in more than one way. Choose one:', handTitle: 'Your hand ({n} cards) · tap a card, or press and slide across several to select; tap again to deselect',
+    scoresT: 'Scores', scoreNote: 'Base score 2 · scores keep adding up', lastRound: 'last round {d}', resetTitle: 'Reset mid-match', resetText: 'When all 3 players agree, scores are cleared and everyone returns to the lobby. {n}/3 agreed so far.',
+    voteBtn: 'Request a reset', unvoteBtn: 'Withdraw my request', chat: 'Chat', noChat: 'No messages yet', logT: 'Game log', noLog: 'Nothing yet', sep: ': ',
+    saved: 'Progress is saved in the room automatically. Open the site in the same browser next time to carry on.', noDb: 'Not connected to the database yet — please wait', denied: 'The database refused the change — check the Firestore rules',
+    failed: 'Something went wrong — please try again', chatDenied: 'The database refused the chat message — check the chat section of the Firestore rules', chatFail: "Message didn't send — please try again",
+    needNick: 'Please enter your nickname above first', haveSeat: 'You already have a seat', nickMismatch: "That nickname doesn't match this seat — use exactly the same nickname as before",
+    noConfig: 'No Firebase config yet.', noConn: "Can't reach the database right now — check your connection and refresh the page.",
+    readFail: 'Could not read the table ({c}) — check the Firestore rules.', fbFail: 'Could not connect to Firebase ({c}) — check the config and that anonymous sign-in is enabled.',
+    emoTitle: 'Emotes and quick phrases', emoAria: 'Send emote {e}', chatPh: 'Say something (up to 20 characters)', send: 'Send', seatFirst: 'Take a seat to send messages', tooFast: 'Slow down a little',
+    coffeeLabel: 'Have a cappuccino ☕', actTomato: 'threw a tomato at {name}', actCoffee: 'poured {name} a cappuccino', yourTurnTitle: 'Your turn · ',
+    types: { single: 'Single', pair: 'Pair', triple: 'Triple', t1: 'Triple + 1', t2: 'Triple + pair', straight: 'Straight', pairs: 'Pair run', plane: 'Airplane', plane1: 'Airplane + singles', plane2: 'Airplane + pairs', f2: 'Four + 2', f22: 'Four + 2 pairs', bomb: 'Bomb', rocket: 'Rocket' },
+    keyTo: 'up to {r}', and: ', ', readyBtn: 'Ready', readyNext: 'Ready for next round', unready: 'Cancel ready', readyTag: 'Ready', readyCount: '{n}/3 ready', autoDeal: 'cards are dealt once all 3 are ready', secs: 's',
+    pauseBtn: 'Pause', resumeBtn: 'Resume game', pausedTitle: 'Game paused', pausedBy: '{name} paused the game. When everyone is ready, any player can tap “Resume game”.', pausedHint: 'The game is paused',
+    lord: 'Landlord', farmer: 'Farmer', dblTag: 'Doubled', firstTag: 'Calls first {card}',
+    roundTitle: 'Round {r}', redealTitle: 'Round {r} · nobody called, re-dealing', markTitle: 'Starter card', markText: 'Whoever is dealt this card calls first', dealingMsg: 'Dealing…',
+    bottomT: 'KITTY', baseLine: 'Base {b}', multWord: 'Multiplier',
+    yourBid: 'Your call', waitBid: 'Waiting for {name} to call', doubling: 'Choosing whether to double',
+    callBtn: 'Call landlord', nocallBtn: 'Pass', grabBtn: 'Grab landlord', nograbBtn: "Don't grab", dblBtn: 'Double', nodblBtn: 'No double',
+    bidHintCall: 'Call landlord?', bidHintGrab: 'Someone has called — grab it? Each grab doubles the multiplier', bidHintFinal: 'Someone grabbed your call — grab it back?',
+    dblHint: 'Double? No choice in time counts as no', dblChosen: 'You chose “{x}” — waiting for the others', dblYes: 'Double', dblNo: 'No double',
+    acts: { call: 'Call landlord', nocall: 'Pass', grab: 'Grab landlord', nograb: "Don't grab" },
+    lordWinT: 'Landlord wins', farmWinT: 'Farmers win', springT: 'Spring!', antiT: 'Reverse spring!',
+    bdBase: 'Base {n}', bdGrab: 'Grabs ×{n}', bdBomb: 'Bombs ×{n}', bdSpring: 'Spring ×2', bdAnti: 'Reverse spring ×2', bdTotal: '{n} per farmer', outTag: 'Out',
+    dblNote: "A farmer's double ×2 only between him and the landlord; the landlord's double ×2 for both",
+    phrases: ["Hurry up, I'm getting hungry", "We've got this one!", 'Hold on, fellow farmer!', "Landlord, you can't escape!", "I'm the landlord, bring it on", "You go, I'll cover you", 'Play high, not low', 'Big move incoming', 'My cards are awful…', 'One more match!', 'Nice teamwork'],
+    err: { notSeated: "You haven't taken a seat", inGameNoSwap: "You can't change seats during a match", seatTaken: 'That seat is taken', inGameNoLeave: "You can't leave your seat during a match", started: 'The game has already started',
+      needThree: 'All 3 seats must be filled to start', notBidding: "It's not time to call landlord", notDoubling: "It's not time to choose doubling", alreadyChose: 'You already chose',
+      cantPlay: "You can't play right now", notYourTurn: "It's not your turn",
+      playNotInHand: "Those cards aren't in your hand", cantBeat: "That doesn't beat the last play, or isn't a valid combination", invalidType: "That isn't a valid combination", cantAct: "You can't do that right now", mustLead: "You're leading, so you must play",
+      noResetNeeded: 'No reset needed right now', paused: 'The game is paused — resume it first', cantPause: "You can't pause right now", cantReady: 'Nothing to get ready for right now' },
+    log: { start: 'New match — base score 2, scores keep adding up', round: 'Round {r}: starter card {card}, {s} calls first', redeal: 'Nobody called — re-dealt: starter card {card}, {s} calls first',
+      bid: '{s}: {a}', autoBid: '{s} ran out of time — “{a}”', nobody: 'Nobody called', lord: '{s} is the landlord; the kitty was {cards}', dbl: '{s} doubled', lead: '{s} (landlord) leads',
+      bomb: '{s} played a bomb — multiplier ×2', rocket: '{s} played the rocket — multiplier ×2', lordWin: 'Landlord {s} wins {n} points', farmWin: 'The farmers win; landlord {s} loses {n} points', spring: 'Spring! Multiplier ×2', anti: 'Reverse spring! Multiplier ×2',
+      reset: 'Match reset — pick seats and start again', vote: '{s} requested a reset ({n}/3)', unvote: '{s} withdrew their reset request',
+      autoPass: '{s} ran out of time — automatic pass', autoPlay: '{s} ran out of time — {card} played automatically', paused: '{s} paused the game', resumed: '{s} resumed the game' },
+  },
+};
+let lang = ls.get('gd-lang', /^zh/i.test(navigator.language || '') ? 'zh' : 'en');
+if (!I18N[lang]) lang = 'zh';
+const D = () => I18N[lang];
+function T(key, p) { let s = D()[key]; if (s == null) return key; return p ? s.replace(/\{(\w+)\}/g, (m, k) => (p[k] != null ? p[k] : m)) : s; }
+const vnameL = (v) => (v === 16 ? D().smallJoker : v === 17 ? D().bigJoker : H.vname(v));
+function cardNameL(id) { const c = H.card(id); return c.s === 'J' ? vnameL(c.r) : H.SUIT_CH[c.s] + H.vname(H.val(c.r)); }
+const cardsL = (ids) => ids.map(cardNameL).join(' ');
+const describeL = (p) => D().types[p.type] || '';
+function keyNameL(p) {
+  if (p.type === 'rocket') return '';
+  if (['straight', 'pairs', 'plane', 'plane1', 'plane2'].includes(p.type)) return D().keyTo.replace('{r}', H.vname(p.key));
+  return vnameL(p.key);
+}
+const trickLabel = (tk) => (tk.type ? describeL(tk) : '');
+const SEATKEYS = ['s'];
+function logHTML(st, e) {
+  const tpl = D().log[e.k];
+  if (!tpl) return '';
+  return esc(tpl).replace(/\{(\w+)\}/g, (m, key) => {
+    const v = e[key];
+    if (v == null) return m;
+    if (SEATKEYS.includes(key)) return '<b>' + esc(seatName(st, v)) + '</b>';
+    if (key === 'card') return esc(cardNameL(v));
+    if (key === 'cards') return esc(cardsL(v));
+    if (key === 'a') return esc(D().acts[v] || v);
+    return esc(v);
+  });
+}
+function errText(e) { return (e && e.code && D().err[e.code]) || (e && e.message) || T('failed'); }
+function applyStatic() {
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en-CA';
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = T(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach((el) => { el.placeholder = T(el.dataset.i18nPh); });
+  document.querySelectorAll('[data-vol]').forEach((el) => { el.setAttribute('aria-label', T('volAria', { x: T(el.dataset.vol) })); });
+  if (typeof uid !== 'undefined' && uid) buildChat();
+}
+
+const cur = () => states[room] || H.fresh();
+function toast(m) { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 3200); }
+function rawName(st, s) { const u = st.seats[s]; return u ? (st.names && st.names[u]) || '' : ''; }
+function seatName(st, s) { const u = st.seats[s]; if (!u) return T('empty'); return (rawName(st, s) || T('player')) + (u === uid ? T('you') : ''); }
+const fmt = (st, m) => esc(m).replace(/@(\d)/g, (_, s) => '<b>' + esc(seatName(st, +s)) + '</b>');
+
+// ================= 声音：背景音乐、音效、语音报牌 =================
+const AU = { ctx: null, music: null, sfx: null, timer: 0, next: 0, step: 0 };
+function audioUnlock() {
+  if (AU.ctx) { if (AU.ctx.state === 'suspended') AU.ctx.resume(); syncMusic(); return; }
+  const C = window.AudioContext || window.webkitAudioContext;
+  if (!C) return;
+  AU.ctx = new C();
+  AU.music = AU.ctx.createGain(); AU.music.gain.value = MAXV.music * vol.music / 100; AU.music.connect(AU.ctx.destination);
+  AU.sfx = AU.ctx.createGain(); AU.sfx.gain.value = MAXV.sfx * vol.sfx / 100; AU.sfx.connect(AU.ctx.destination);
+  if ('speechSynthesis' in window) { const u = new SpeechSynthesisUtterance(''); speechSynthesis.speak(u); }
+  syncMusic();
+}
+document.addEventListener('pointerdown', audioUnlock, true);
+document.addEventListener('keydown', audioUnlock, true);
+function tone(freq, t, dur, vol, type, out, glideTo) {
+  const c = AU.ctx, o = c.createOscillator(), g = c.createGain();
+  o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t);
+  if (glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(out); o.start(t); o.stop(t + dur + 0.05);
+}
+function noise(t, dur, vol, freq, q, out) {
+  const c = AU.ctx, n = Math.floor(c.sampleRate * dur), buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n) ** 2;
+  const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  s.buffer = buf; f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q; g.gain.value = vol;
+  s.connect(f); f.connect(g); g.connect(out); s.start(t);
+}
+function sweep(t, dur, vol, f0, f1) {
+  const c = AU.ctx, n = Math.floor(c.sampleRate * dur), buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * i / n);
+  const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  s.buffer = buf; f.type = 'bandpass'; f.Q.value = 1.4; f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.7); f.frequency.exponentialRampToValueAtTime(f0, t + dur);
+  g.gain.value = vol; s.connect(f); f.connect(g); g.connect(AU.sfx); s.start(t);
+}
+function gurgle(t, dur) {
+  const c = AU.ctx, n = Math.floor(c.sampleRate * dur), buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.min(1, i / (0.08 * c.sampleRate), (n - i) / (0.25 * c.sampleRate));
+  const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  s.buffer = buf; f.type = 'bandpass'; f.Q.value = 6;
+  for (let k = 0; k < dur / 0.06; k++) f.frequency.setValueAtTime(500 + Math.random() * 900, t + k * 0.06);
+  g.gain.value = 2.2; s.connect(f); f.connect(g); g.connect(AU.sfx); s.start(t);
+}
+const SFX = {
+  card() { const t = AU.ctx.currentTime; noise(t, 0.09, 1.4, 1900, 0.9, AU.sfx); tone(180, t, 0.08, 0.25, 'triangle', AU.sfx); },
+  bomb() { const t = AU.ctx.currentTime; tone(160, t, 0.7, 0.9, 'sine', AU.sfx, 38); noise(t, 0.5, 1.6, 300, 0.6, AU.sfx); noise(t + 0.02, 0.25, 0.8, 2400, 0.7, AU.sfx); },
+  pass() { const t = AU.ctx.currentTime; tone(420, t, 0.12, 0.15, 'triangle', AU.sfx); },
+  ding() { const t = AU.ctx.currentTime; tone(1318.5, t, 0.16, 0.35, 'sine', AU.sfx); tone(1760, t + 0.13, 0.22, 0.35, 'sine', AU.sfx); },
+  turn() { const t = AU.ctx.currentTime; tone(660, t, 0.25, 0.2, 'sine', AU.sfx); tone(990, t + 0.1, 0.3, 0.14, 'sine', AU.sfx); },
+  tick() { const t = AU.ctx.currentTime; tone(1500, t, 0.05, 0.25, 'square', AU.sfx); },
+  whoosh() { sweep(AU.ctx.currentTime, 0.55, 0.9, 500, 2600); },
+  splat() { const t = AU.ctx.currentTime; noise(t, 0.32, 2.2, 520, 0.7, AU.sfx); noise(t + 0.03, 0.18, 1.2, 1500, 1.2, AU.sfx); tone(170, t, 0.18, 0.5, 'sine', AU.sfx, 55); },
+  clink() { const t = AU.ctx.currentTime; tone(2637, t, 0.35, 0.12, 'sine', AU.sfx); tone(3951, t + 0.01, 0.3, 0.07, 'sine', AU.sfx); tone(2093, t + 0.12, 0.3, 0.08, 'sine', AU.sfx); },
+  pour() { gurgle(AU.ctx.currentTime, 1.1); },
+  lord() { const t = AU.ctx.currentTime; [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, t + i * 0.11, 0.38, 0.32, 'triangle', AU.sfx)); },
+};
+function sfx(name) { if (!opt.sfx || !AU.ctx) return; try { SFX[name](); } catch (e) {} }
+// 原创五声音阶小曲：C D E G A
+const SC = [261.63, 293.66, 329.63, 392, 440, 523.25, 587.33, 659.25];
+const MEL = [2,-1,3,4,3,-1,2,1, 0,-1,1,2,-1,-1,-1,-1, 4,-1,5,4,3,-1,2,-1, 1,2,3,-1,1,-1,-1,-1, 3,-1,4,5,6,-1,5,4, 7,-1,6,5,4,-1,-1,-1, 5,-1,4,3,2,-1,3,-1, 1,2,0,-1,-1,-1,-1,-1];
+const BASS = [130.81, 110, 87.31, 98, 130.81, 110, 87.31, 130.81];
+function musicTick() {
+  const c = AU.ctx, eighth = 0.4;
+  while (AU.next < c.currentTime + 0.4) {
+    const i = AU.step % MEL.length, t = AU.next;
+    if (MEL[i] >= 0) { tone(SC[MEL[i]], t, 1.1, 0.5, 'triangle', AU.music); tone(SC[MEL[i]] * 2, t, 0.5, 0.08, 'sine', AU.music); }
+    if (i % 4 === 0) tone(BASS[Math.floor(i / 8)], t, 1.5, 0.45, 'sine', AU.music);
+    AU.step++; AU.next += eighth;
+  }
+}
+// 大厅音乐：和 index.html 放在同一个文件夹里的 lobby.mp3
+const lobby = { el: null, ok: true, fade: 0 };
+function lobbyAudio() {
+  if (!lobby.el) {
+    lobby.el = new Audio('lobby.mp3');
+    lobby.el.loop = true; lobby.el.preload = 'auto'; lobby.el.volume = 0;
+    lobby.el.addEventListener('error', () => { lobby.ok = false; });
+  }
+  return lobby.el;
+}
+function fadeLobby(on) {
+  if (!lobby.ok) return;
+  const a = lobbyAudio();
+  clearInterval(lobby.fade);
+  if (on && a.paused) a.play().catch(() => {});
+  lobby.fade = setInterval(() => {
+    const v = a.volume + (on ? 0.006 : -0.009);
+    a.volume = Math.max(0, Math.min(lobbyVol(), v));
+    if (on && a.volume >= lobbyVol()) clearInterval(lobby.fade);
+    if (!on && a.volume <= 0) { clearInterval(lobby.fade); a.pause(); }
+  }, 60);
+}
+function syncMusic() {
+  const ph = cur().phase;
+  const inGame = ph === 'play' || ph === 'bid' || ph === 'double';
+  const want = opt.music && AU.ctx && ready && inGame;
+  if (want && !AU.timer) { AU.next = AU.ctx.currentTime + 0.1; AU.timer = setInterval(musicTick, 120); }
+  if (!want && AU.timer) { clearInterval(AU.timer); AU.timer = 0; }
+  const wantLobby = !!(opt.music && AU.ctx && ready && !inGame);
+  if (wantLobby !== lobby.on) { lobby.on = wantLobby; fadeLobby(wantLobby); }
+  else if (wantLobby && lobby.el && lobby.el.paused && lobby.ok) lobby.el.play().catch(() => {});
+}
+let zhVoice = null;
+function pickVoice() { if (!('speechSynthesis' in window)) return; const vs = speechSynthesis.getVoices(); zhVoice = vs.find((v) => /zh[-_]CN/i.test(v.lang)) || vs.find((v) => /^zh/i.test(v.lang)) || null; }
+if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function say(text) {
+  if (!opt.voice || !('speechSynthesis' in window)) return;
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = 'zh-CN'; if (zhVoice) u.voice = zhVoice; u.rate = 1.1; u.volume = vol.voice / 100; speechSynthesis.speak(u); } catch (e) {}
+}
+function spokenPlay(ev) {
+  const nm = (v) => (v === 16 ? '小王' : v === 17 ? '大王' : H.vname(v));
+  switch (ev.type) {
+    case 'single': return nm(ev.key);
+    case 'pair': return '对' + nm(ev.key);
+    case 'triple': return '三个' + nm(ev.key);
+    case 't1': return '三个' + nm(ev.key) + '带一';
+    case 't2': return '三个' + nm(ev.key) + '带一对';
+    case 'straight': return '顺子';
+    case 'pairs': return '连对';
+    case 'plane': case 'plane1': case 'plane2': return '飞机';
+    case 'f2': return '四带二';
+    case 'f22': return '四带两对';
+    case 'bomb': return '炸弹！';
+    case 'rocket': return '王炸！';
+  }
+  return '';
+}
+const ACT_ZH = { call: '叫地主', nocall: '不叫', grab: '抢地主', nograb: '不抢' };
+function handleEvent(r, st) {
+  const ev = st.ev, prevK = evSeen[r];
+  evSeen[r] = ev ? ev.k : 0;
+  if (prevK === null || !ev || ev.k <= prevK || r !== room) return;
+  if (ev.kind === 'pass') { sfx('pass'); say(['不要', '过', '要不起'][ev.k % 3]); }
+  else if (ev.kind === 'bid') { sfx(ev.a === 'call' || ev.a === 'grab' ? 'ding' : 'pass'); say(ACT_ZH[ev.a]); }
+  else if (ev.kind === 'lord') { sfx('lord'); say((rawName(st, ev.seat) || '玩家') + '当地主'); }
+  else if (ev.kind === 'dbl') { if (ev.yes) { sfx('ding'); say('加倍'); } }
+  else if (ev.kind === 'play') {
+    sfx(ev.type === 'bomb' || ev.type === 'rocket' ? 'bomb' : 'card');
+    let text = spokenPlay(ev);
+    if (ev.left === 2) text += '，我只剩两张牌了';
+    else if (ev.left === 1) text += '，我只剩一张牌了';
+    else if (ev.left === 0 && st.prev) text += '。' + (st.prev.lordWin ? '地主赢了' : '农民赢了') + (st.prev.spring ? '，春天！' : st.prev.anti ? '，反春！' : '');
+    say(text);
+  }
+  const me = st.seats.indexOf(uid);
+  if ((st.phase === 'play' || st.phase === 'bid') && st.g && st.g.turn === me && me >= 0) setTimeout(() => sfx('turn'), 600);
+}
+function renderSnd() {
+  document.querySelectorAll('.vol').forEach((w) => {
+    const k = w.dataset.k;
+    w.querySelector('button').setAttribute('aria-pressed', !!opt[k]);
+    w.classList.toggle('off', !opt[k]);
+    const r = w.querySelector('input');
+    if (document.activeElement !== r) r.value = vol[k];
+    w.querySelector('output').textContent = vol[k] + '%';
+  });
+}
+function applyVol() {
+  if (AU.ctx) {
+    AU.music.gain.setTargetAtTime(MAXV.music * vol.music / 100, AU.ctx.currentTime, 0.05);
+    AU.sfx.gain.setTargetAtTime(MAXV.sfx * vol.sfx / 100, AU.ctx.currentTime, 0.05);
+  }
+  if (lobby.el && lobby.on && !lobby.el.paused) { clearInterval(lobby.fade); lobby.el.volume = Math.min(1, lobbyVol()); }
+}
+document.addEventListener('input', (e) => {
+  const k = e.target.dataset && e.target.dataset.vol;
+  if (!k) return;
+  vol[k] = +e.target.value;
+  if (!opt[k] && vol[k] > 0) { opt[k] = true; ls.set('gd-snd', opt); lobby.on = undefined; syncMusic(); }
+  ls.set('gd-vol', vol);
+  applyVol(); renderSnd();
+});
+document.addEventListener('change', (e) => {
+  const k = e.target.dataset && e.target.dataset.vol;
+  if (k === 'sfx') sfx('card');
+  if (k === 'voice') say('三个4带一对2');
+});
+
+// ================= 存储区（只保存在自己的浏览器里） =================
+const storeKey = () => { const st = cur(); return `ddz-store:${room}:${st.round}:${st.g ? st.g.redo || 0 : 0}:${uid}`; };
+function getGroups(hand) {
+  const gs = ls.get(storeKey(), []).map((g) => g.filter((id) => hand.includes(id))).filter((g) => g.length);
+  return gs;
+}
+function setGroups(gs) { ls.set(storeKey(), gs.filter((g) => g.length)); }
+
+// ================= 聊天与表情 =================
+// 自定义表情包（图片内嵌在网页里）
+const STICKERS = window.STICKERS || [];
+const stk = (id) => STICKERS.find((s) => s.id === id);
+const stkName = (s) => (lang === 'zh' ? s.zh : s.en);
+const EMOTES = ['😂', '👍', '😎', '😭', '😡', '🤔', '🎉', '💣', '🙏', '😴'];
+const chats = { d1: [], d2: [] }, chatInit = { d1: false, d2: false }, seen = new Set(), bubbles = {};
+let lastSend = 0;
+function bubbleHTML(s) {
+  const b = bubbles[room + ':' + s];
+  if (!b || b.until < Date.now()) return '';
+  if (b.kind === 'stk') { const s = stk(b.text); return s ? `<div class="bubble stk"><img src="${s.src}" alt="${esc(stkName(s))}"></div>` : ''; }
+  const text = b.p != null && D().phrases[b.p] ? D().phrases[b.p] : b.text;
+  return `<div class="bubble ${b.kind === 'emo' ? 'emo' : ''}">${esc(text)}</div>`;
+}
+function onChat(r, list) {
+  let fresh = false;
+  for (const m of list) {
+    if (seen.has(m.id)) continue;
+    seen.add(m.id);
+    if (!chatInit[r]) continue;
+    if (m.kind === 'act') { if (r === room) setTimeout(() => throwFx(m.item, m.seat, m.to), 0); continue; }
+    bubbles[r + ':' + m.seat] = { kind: m.kind, text: m.text, p: m.p, until: Date.now() + 4000 }; setTimeout(render, 4100); if (r === room) fresh = true;
+  }
+  chatInit[r] = true;
+  chats[r] = list;
+  if (fresh) sfx('ding');
+  render();
+}
+function buildChat() {
+  const keep = $('#chatIn') ? $('#chatIn').value : '';
+  $('#chatpanel').innerHTML = `<h4>${esc(T('emoTitle'))}</h4>
+    <div class="emos">${EMOTES.map((e) => `<button type="button" data-act="emo" data-v="${e}" aria-label="${esc(T('emoAria', { e }))}">${e}</button>`).join('')}</div>
+    <div class="stks">${STICKERS.map((s) => `<button type="button" data-act="stk" data-v="${s.id}" aria-label="${esc(T('emoAria', { e: stkName(s) }))}" title="${esc(stkName(s))}"><img src="${s.src}" alt=""></button>`).join('')}</div>
+    <div class="says">${D().phrases.map((p, i) => `<button type="button" data-act="say" data-v="${i}">${esc(p)}</button>`).join('')}</div>
+    <form class="chatin" id="chatform"><input id="chatIn" maxlength="20" placeholder="${esc(T('chatPh'))}" autocomplete="off" value="${esc(keep)}"><button class="btn sec" type="submit">${esc(T('send'))}</button></form>`;
+  $('#chatform').addEventListener('submit', (e) => { e.preventDefault(); const v = $('#chatIn').value.trim(); if (v && sendChat('text', v)) $('#chatIn').value = ''; });
+}
+function sendChat(kind, text, p) {
+  const me = cur().seats.indexOf(uid);
+  if (me < 0) { toast(T('seatFirst')); return false; }
+  if (Date.now() - lastSend < 1500) { toast(T('tooFast')); return false; }
+  lastSend = Date.now();
+  const m = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), seat: me, kind, text: String(text).slice(0, 20), name: nick.trim() };
+  if (p != null) m.p = p;
+  chatWrite(room, (list) => list.concat([m]).slice(-30));
+  return true;
+}
+
+// ================= 扔番茄 / 倒咖啡 =================
+const SVG = {
+  tomato: '<svg viewBox="0 0 44 44" width="44" height="44"><circle cx="22" cy="25" r="16" fill="#e0352b"/><circle cx="22" cy="25" r="16" fill="none" stroke="#b5241c" stroke-width="2"/><ellipse cx="15" cy="19" rx="5" ry="3.5" fill="#ff9184" opacity=".75"/><polygon points="22,7 25,13 31,11 27,16 32,20 25,19 22,24 20,19 13,20 18,16 14,11 20,13" fill="#2e8b3a"/></svg>',
+  splat: '<svg viewBox="0 0 120 120" width="120" height="120"><path d="M60 22c9 0 11 12 19 9s14 6 9 13 9 9 8 18-12 6-10 14-4 15-13 12-10 10-18 6-9-10-18-8-14-7-9-15-12-9-9-17 7-8 3-16 8-11 16-8 6-12 14-11z" fill="#d6281f"/><path d="M60 34c6 0 8 8 13 6s9 4 6 9 6 6 5 12-8 4-7 9-3 10-9 8-7 7-12 4-6-7-12-5-9-5-6-10-8-6-6-11 5-5 2-11 5-7 11-5 4-8 10-7z" fill="#ef4a3c"/><circle cx="22" cy="30" r="5" fill="#d6281f"/><circle cx="101" cy="40" r="4" fill="#d6281f"/><circle cx="98" cy="95" r="6" fill="#d6281f"/><circle cx="18" cy="88" r="4" fill="#d6281f"/><ellipse cx="52" cy="55" rx="3" ry="2" fill="#ffd34d"/><ellipse cx="68" cy="62" rx="3" ry="2" fill="#ffd34d" transform="rotate(30 68 62)"/><ellipse cx="58" cy="74" rx="3" ry="2" fill="#ffd34d"/><ellipse cx="72" cy="48" rx="3" ry="2" fill="#ffd34d" transform="rotate(-20 72 48)"/><path d="M47 92q2 14 5 14t3-12z" fill="#d6281f"/><path d="M75 90q1 10 4 10t2-9z" fill="#d6281f"/></svg>',
+  cup: '<svg viewBox="0 0 64 52" width="64" height="52"><ellipse cx="30" cy="46" rx="26" ry="5" fill="#e9e4da" stroke="#bfb6a6" stroke-width="1.5"/><path d="M10 14h40l-4 26q-1 6-8 6H22q-7 0-8-6z" fill="#fffdf7" stroke="#bfb6a6" stroke-width="1.5"/><path d="M50 19q11 0 10 9t-12 9" fill="none" stroke="#bfb6a6" stroke-width="4"/><ellipse cx="30" cy="14" rx="20" ry="5" fill="#8a5a33"/><ellipse cx="30" cy="14" rx="15" ry="3.4" fill="#e9d2b0"/><path d="M27 13q3-3 3 1q0-4 3-1q-3 3-3 3t-3-3z" fill="#8a5a33"/></svg>',
+  stain: '<svg viewBox="0 0 120 120" width="120" height="120"><path d="M58 24c10-2 14 9 22 8s12 9 8 15 10 8 7 17-11 5-10 13-6 14-15 11-10 9-17 5-8-11-17-8-12-8-8-15-11-9-8-17 8-6 5-14 9-10 16-7 5-6 14-8z" fill="#7a4a24" opacity=".92"/><path d="M60 40c7 0 9 6 14 6s7 6 4 10 6 6 3 11-8 3-7 8-5 8-11 6-7 5-11 2-5-7-11-5-8-5-5-10-7-6-5-11 6-4 4-9 6-6 11-4 6-4 10-4z" fill="#c8915c"/><ellipse cx="57" cy="58" rx="12" ry="8" fill="#f1dfc2"/><circle cx="24" cy="36" r="4" fill="#7a4a24"/><circle cx="100" cy="46" r="5" fill="#7a4a24"/><circle cx="92" cy="98" r="4" fill="#7a4a24"/><path d="M50 95q2 15 5 15t3-13z" fill="#7a4a24"/><path d="M78 92q1 11 4 11t2-10z" fill="#7a4a24"/></svg>',
+};
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function sendThrow(item, to) {
+  const st = cur(), me = st.seats.indexOf(uid);
+  if (me < 0 || to === me) return;
+  if (Date.now() - lastSend < 1500) { toast(T('tooFast')); return; }
+  lastSend = Date.now();
+  const who = rawName(st, to) || '玩家';
+  const text = item === 'tomato' ? `向 ${who} 扔了一个番茄` : `给 ${who} 倒了一杯卡布奇诺`;
+  const m = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), seat: me, to, kind: 'act', item, text, name: nick.trim() };
+  chatWrite(room, (list) => list.concat([m]).slice(-30));
+}
+function seatBox(s) { const el = document.querySelector(`.pl[data-seat="${s}"]`); return el ? el.getBoundingClientRect() : null; }
+function fxEl(html, x, y) {
+  const el = document.createElement('div'); el.className = 'fx'; el.innerHTML = html;
+  el.style.transform = `translate(${x}px,${y}px)`; document.body.appendChild(el); return el;
+}
+function arc(x0, y0, x1, y1, h, n, extra) {
+  const k = [];
+  for (let i = 0; i <= n; i++) { const t = i / n; k.push({ transform: `translate(${x0 + (x1 - x0) * t}px,${y0 + (y1 - y0) * t - h * 4 * t * (1 - t)}px) ${extra(t)}` }); }
+  return k;
+}
+function throwFx(item, from, to) {
+  const rb = seatBox(to);
+  if (!rb) return;
+  const ra = seatBox(from) || { left: innerWidth / 2, top: innerHeight, width: 0, height: 0 };
+  const x0 = ra.left + ra.width / 2, y0 = ra.top + ra.height / 2, x1 = rb.left + rb.width / 2, y1 = rb.top + rb.height / 2;
+  const h = Math.min(160, 60 + Math.hypot(x1 - x0, y1 - y0) * 0.3);
+  if (item === 'tomato') {
+    sfx('whoosh');
+    const el = fxEl(SVG.tomato, x0 - 22, y0 - 22);
+    const fly = el.animate(arc(x0 - 22, y0 - 22, x1 - 22, y1 - 22, h, 12, (t) => `rotate(${t * 720}deg)`), { duration: reduceMotion ? 1 : 620, easing: 'linear', fill: 'forwards' });
+    fly.onfinish = () => {
+      el.remove(); sfx('splat');
+      const sp = fxEl(SVG.splat, x1 - 60, y1 - 60);
+      sp.animate([{ transform: `translate(${x1 - 60}px,${y1 - 60}px) scale(.2)`, opacity: 1 }, { transform: `translate(${x1 - 60}px,${y1 - 60}px) scale(1.1)`, opacity: 1, offset: 0.06 }, { transform: `translate(${x1 - 60}px,${y1 - 60}px) scale(1)`, opacity: 1, offset: 0.12 }, { transform: `translate(${x1 - 60}px,${y1 - 52}px) scale(1)`, opacity: 1, offset: 0.65 }, { transform: `translate(${x1 - 60}px,${y1 - 40}px) scale(1)`, opacity: 0 }], { duration: 3400, easing: 'ease-in', fill: 'forwards' }).onfinish = () => sp.remove();
+      shake(to);
+    };
+  } else {
+    sfx('clink');
+    const tx = x1 - 32 - 28, ty = y1 - 26 - 70;
+    const el = fxEl(SVG.cup, x0 - 32, y0 - 26);
+    const fly = el.animate(arc(x0 - 32, y0 - 26, tx, ty, h * 0.6, 12, () => 'rotate(0deg)'), { duration: reduceMotion ? 1 : 700, easing: 'ease-out', fill: 'forwards' });
+    fly.onfinish = () => {
+      el.animate([{ transform: `translate(${tx}px,${ty}px) rotate(0deg)` }, { transform: `translate(${tx}px,${ty}px) rotate(70deg)`, offset: 0.3 }, { transform: `translate(${tx}px,${ty}px) rotate(70deg)`, offset: 0.85 }, { transform: `translate(${tx}px,${ty}px) rotate(70deg)`, opacity: 0 }], { duration: 1500, fill: 'forwards' }).onfinish = () => el.remove();
+      setTimeout(() => {
+        sfx('pour');
+        const stream = document.createElement('div');
+        stream.className = 'fx';
+        stream.style.cssText = `width:8px;height:60px;border-radius:4px;background:linear-gradient(#8a5a33,#6b4423);transform-origin:top;transform:translate(${x1 - 14}px,${y1 - 57}px) scaleY(0)`;
+        document.body.appendChild(stream);
+        stream.animate([{ transform: `translate(${x1 - 14}px,${y1 - 57}px) scaleY(0)` }, { transform: `translate(${x1 - 14}px,${y1 - 57}px) scaleY(1)`, offset: 0.3 }, { transform: `translate(${x1 - 14}px,${y1 - 57}px) scaleY(1)`, opacity: 1, offset: 0.8 }, { transform: `translate(${x1 - 14}px,${y1 - 2}px) scaleY(0)`, opacity: 0 }], { duration: 900, fill: 'forwards' }).onfinish = () => stream.remove();
+        setTimeout(() => {
+          const sn = fxEl(SVG.stain, x1 - 60, y1 - 50);
+          sn.animate([{ transform: `translate(${x1 - 60}px,${y1 - 50}px) scale(.3)`, opacity: 0.9 }, { transform: `translate(${x1 - 60}px,${y1 - 50}px) scale(1)`, opacity: 1, offset: 0.1 }, { transform: `translate(${x1 - 60}px,${y1 - 50}px) scale(1)`, opacity: 1, offset: 0.7 }, { transform: `translate(${x1 - 60}px,${y1 - 50}px) scale(1)`, opacity: 0 }], { duration: 3200, fill: 'forwards' }).onfinish = () => sn.remove();
+          const lb = document.createElement('div'); lb.className = 'fxlabel'; lb.textContent = T('coffeeLabel');
+          document.body.appendChild(lb);
+          const w = lb.offsetWidth;
+          lb.style.left = Math.max(8, Math.min(innerWidth - w - 8, x1 - w / 2)) + 'px'; lb.style.top = Math.max(8, rb.top - 40) + 'px';
+          lb.animate([{ opacity: 0 }, { opacity: 1, offset: 0.1 }, { opacity: 1, offset: 0.8 }, { opacity: 0 }], { duration: 2600, fill: 'forwards' }).onfinish = () => lb.remove();
+          shake(to);
+        }, 260);
+      }, 420);
+    };
+  }
+}
+function shake(s) {
+  const el = document.querySelector(`.pl[data-seat="${s}"]`);
+  if (el && !reduceMotion) el.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'translateX(-4px)' }, { transform: 'translateX(0)' }], { duration: 350 });
+}
+
+// ================= 倒计时：叫/抢地主 15 秒，加倍 10 秒，出牌 30 秒 =================
+const nowOf = (st) => (st.paused ? st.paused.at : Date.now());
+// 发牌前亮决定牌的剩余毫秒数（只在一局刚开始、还没人叫的时候）
+function revealLeft(st) {
+  const g = st.g;
+  if (!g || st.phase !== 'bid' || g.bids.length) return 0;
+  return Math.max(0, g.dealtAt + H.REVEAL_MS - nowOf(st));
+}
+function remaining(st) {
+  const g = st.g;
+  if (!g || (st.phase !== 'play' && st.phase !== 'bid') || !g.turnAt || g.turn < 0) return null;
+  const secs = st.phase === 'bid' ? H.BID_SECS : H.TURN_SECS;
+  return Math.min(secs, secs - (nowOf(st) - g.turnAt) / 1000);
+}
+function dblRemaining(st) {
+  const g = st.g;
+  if (st.phase !== 'double' || !g || !g.dblAt) return null;
+  return H.DBL_SECS - (nowOf(st) - g.dblAt) / 1000;
+}
+const lowAt = (st) => (st.phase === 'bid' ? 5 : 10);
+const timerHTML = (st) => { const r = remaining(st); if (r == null) return ''; const n = Math.max(0, Math.ceil(r)); return `<b class="timer ${n <= lowAt(st) ? 'low' : ''}">${n}</b>`; };
+const ttimerHTML = (st) => { const r = dblRemaining(st); if (r == null) return ''; const n = Math.max(0, Math.ceil(r)); return `<b class="ttimer ${n <= 3 ? 'low' : ''}">${n}</b>`; };
+let lastTick = null, timeoutTried = null, dblTried = null, wasRevealing = false;
+setInterval(() => {
+  if (!ready) return;
+  const st = cur(), me = st.seats.indexOf(uid);
+  const rv = revealLeft(st) > 0;
+  if (wasRevealing && !rv) render();
+  wasRevealing = rv;
+  const dr = dblRemaining(st);
+  if (dr != null) {
+    const n = Math.max(0, Math.ceil(dr));
+    document.querySelectorAll('.ttimer').forEach((el) => { if (el.textContent !== String(n)) el.textContent = n; el.classList.toggle('low', n <= 3); });
+    const at = st.g.dblAt;
+    if (!st.paused && me >= 0 && dr <= 0 && dblTried !== at) { dblTried = at; mutate((s) => H.dblTimeout(s, at)); }
+    return;
+  }
+  const r = remaining(st);
+  if (r == null) return;
+  const n = Math.max(0, Math.ceil(r));
+  document.querySelectorAll('.timer').forEach((el) => { if (el.textContent !== String(n)) el.textContent = n; el.classList.toggle('low', n <= lowAt(st)); });
+  if (st.paused || rv) return;
+  const g = st.g;
+  if (g.turn === me && me >= 0 && n <= 5 && n > 0 && lastTick !== g.turnAt + ':' + n) { lastTick = g.turnAt + ':' + n; sfx('tick'); }
+  // 时间到：轮到的人自己先处理；他掉线的话，其他玩家等2秒后代为处理
+  if (me >= 0 && timeoutTried !== g.turnAt && ((r <= 0 && g.turn === me) || r <= -2)) {
+    timeoutTried = g.turnAt;
+    const at = g.turnAt;
+    mutate((s) => H.timeout(s, at));
+  }
+}, 250);
+
+// ================= 纸牌 =================
+function cardEl(id, cls = '', btn = false, style = '') {
+  const c = H.card(id);
+  const red = c.s === 'H' || c.s === 'D' || c.r === 17;
+  const tag = btn ? 'button' : 'span';
+  const attr = (btn ? ` type="button" data-id="${id}" aria-pressed="${cls.includes('up')}"` : '') + style;
+  if (c.s === 'J') return `<${tag} class="cd joker ${red ? 'red' : ''} ${cls}"${attr} aria-label="${esc(cardNameL(id))}"><b>${esc(D().jokerFace[c.r - 16])}</b></${tag}>`;
+  return `<${tag} class="cd ${red ? 'red' : ''} ${cls}"${attr} aria-label="${esc(cardNameL(id))}"><b>${H.vname(H.val(c.r))}</b><i>${H.SUIT_CH[c.s]}</i></${tag}>`;
+}
+const backEl = () => '<span class="cd back" aria-hidden="true"></span>';
+const mini = (ids) => `<div class="mini">${ids.map((i) => cardEl(i)).join('')}</div>`;
+// ================= 画面 =================
+let revealT = 0;
+function render() {
+  const st = cur();
+  document.querySelectorAll('.tab[data-r]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.r === room));
+  ROOMS.forEach((r, i) => {
+    const s = states[r], n = s ? s.seats.filter(Boolean).length : 0;
+    $('#c' + (i + 1)).textContent = s && s.phase !== 'lobby' ? T('inGame') : T('people', { n });
+  });
+  renderSnd();
+  if (fatal) { $('#stage').innerHTML = `<div class="note">${esc(T(fatal.k, fatal.p))}</div>`; $('#side').innerHTML = ''; return; }
+  if (!ready) return;
+  const me = st.seats.indexOf(uid);
+  $('#stage').innerHTML = st.phase === 'lobby' ? lobbyHTML(st, me) : gameHTML(st, me);
+  $('#side').innerHTML = sideHTML(st, me);
+  $('#chatpanel').hidden = me < 0;
+  const rv = revealLeft(st);
+  // 决定牌亮完、手牌发完、“先叫”的人亮完以后，再各画一次
+  clearTimeout(revealT);
+  if (rv) revealT = setTimeout(render, rv + 30);
+  else if (st.phase === 'bid' && st.g && !st.g.bids.length) { const el = nowOf(st) - (st.g.dealtAt + H.REVEAL_MS); if (el < FIRST_FLASH) revealT = setTimeout(render, FIRST_FLASH - el + 30); }
+  const myTurn = st.g && st.g.turn === me && me >= 0 && (st.phase === 'play' || st.phase === 'bid') && !rv;
+  const myDbl = st.phase === 'double' && me >= 0 && st.g.dbl[me] == null;
+  document.title = (myTurn || myDbl ? T('yourTurnTitle') : '') + T('title');
+  syncMusic();
+}
+
+const SEATS = [0, 1, 2];
+const isReady = (st, s) => !!st.seats[s] && (st.ready || []).includes(st.seats[s]);
+const readyCount = (st) => SEATS.filter((s) => isReady(st, s)).length;
+function readyBtnHTML(st, me, label) {
+  if (me < 0) return '';
+  const on = isReady(st, me);
+  return `<button class="btn ${on ? 'ghost' : ''}" data-act="${on ? 'unready' : 'ready'}" style="pointer-events:auto">${esc(on ? T('unready') : label)}</button>`;
+}
+function lobbyHTML(st, me) {
+  const full = st.seats.every(Boolean);
+  const seats = SEATS.map((i) => {
+    const u = st.seats[i];
+    return `<button class="seat ${u ? 'taken' : ''} ${u === uid ? 'me' : ''}" style="grid-area:s${i}" data-act="sit" data-i="${i}" ${u && u !== uid ? 'disabled' : ''}>
+      ${esc(seatName(st, i))}<small>${esc(u ? (u === uid ? T('mySeat') : T('taken')) : T('seatClick'))}</small>${isReady(st, i) ? `<span class="rdy">✓ ${esc(T('readyTag'))}</span>` : ''}</button>`;
+  }).join('');
+  return `<div class="felt lobby">${seats}
+    <div class="info">
+      <div class="lv">${esc(T(room === 'd1' ? 'room1' : 'room2'))}</div>
+      <p>${esc(T('lobbyHelp'))}</p>
+      ${readyBtnHTML(st, me, T('readyBtn'))}
+      <p>${esc(T('readyCount', { n: readyCount(st) }))} · ${esc(full ? T('autoDeal') : T('waitThree'))}</p>
+      ${me >= 0 ? `<button class="btn ghost" data-act="leave">${esc(T('leave'))}</button>` : ''}
+    </div></div>`;
+}
+
+// 剩几张牌一直显示，剩 2 张及以下变成醒目的黄色
+function countHTML(st, s, me) {
+  const g = st.g;
+  if (st.phase === 'roundEnd' && isReady(st, s)) return `<span class="rdy">✓ ${esc(T('readyTag'))}</span>`;
+  if (revealLeft(st)) return '';
+  const n = g.hands[s].length;
+  if (!n) return `<span class="badge out">${esc(T('outTag'))}</span>`;
+  if (s === me) return esc(T('myCount', { n }));
+  return `<span class="${n <= 2 ? 'warn' : ''}">${esc(T('left', { n }))}</span>`;
+}
+const lordTag = () => `<span class="tg lord">${esc(T('lord'))}</span>`;
+const farmTag = () => `<span class="tg farm">${esc(T('farmer'))}</span>`;
+const dblTag = () => `<span class="tg dbl">${esc(T('dblTag'))}</span>`;
+function roleTags(st, s) {
+  const g = st.g;
+  let h = '';
+  if (g.lord >= 0) h += g.lord === s ? lordTag() : farmTag();
+  if (g.dbl && g.dbl[s]) h += dblTag();
+  if (st.phase === 'bid' && !revealLeft(st) && g.first === s) h += `<span class="tg first">${esc(T('firstTag', { card: cardNameL(g.mark) }))}</span>`;
+  return h;
+}
+const FIRST_FLASH = 2400;
+function playerHTML(st, s, pos, me) {
+  const g = st.g;
+  const turn = g.turn === s && (st.phase === 'play' || (st.phase === 'bid' && !revealLeft(st)));
+  const name = seatName(st, s);
+  const claim = me < 0 && uid ? `<button class="btn ghost small" data-act="claim" data-i="${s}">${esc(T('claim'))}</button>` : '';
+  const acts = me >= 0 && s !== me ? `<div class="acts"><button type="button" data-act="throw" data-item="tomato" data-to="${s}" aria-label="${esc(T('tomatoAria', { name }))}" title="${esc(T('tomatoTitle'))}">🍅</button><button type="button" data-act="throw" data-item="coffee" data-to="${s}" aria-label="${esc(T('coffeeAria', { name }))}" title="${esc(T('coffeeTitle'))}">☕</button></div>` : '';
+  // 拿到决定牌的人：决定牌亮完后，头像亮几下
+  let fc = '', fs = '';
+  if (st.phase === 'bid' && g.first === s && !g.bids.length && !revealLeft(st)) {
+    const el = nowOf(st) - (g.dealtAt + H.REVEAL_MS);
+    if (el < FIRST_FLASH) { fc = 'firstflash'; fs = ` style="animation-delay:-${Math.max(0, Math.round(el))}ms"`; }
+  }
+  return `<div class="pl pos-${pos} ${turn ? 'turn' : ''} ${fc}" data-seat="${s}"${fs}>${bubbleHTML(s)}<div class="nm">${esc(name)}${roleTags(st, s)}</div><div class="meta">${countHTML(st, s, me)}</div>${acts}${claim}</div>`;
+}
+function slotHTML(st, s, pos) {
+  const g = st.g;
+  let inner = '', old = '';
+  if (st.phase === 'roundEnd') inner = '';
+  else if (st.phase === 'bid') {
+    if (revealLeft(st)) inner = '';
+    else if (g.turn === s) inner = `<div class="think">${esc(T('bidThinking'))} ${timerHTML(st)}</div>`;
+    else {
+      const b = g.bids.filter((x) => x.s === s).pop();
+      if (b) inner = `<div class="ps ${b.a === 'call' || b.a === 'grab' ? 'yes' : ''}">${esc(D().acts[b.a])}</div>`;
+    }
+  } else if (st.phase === 'double') {
+    const d = g.dbl[s];
+    inner = d == null ? `<div class="think">${esc(T('considering'))} ${ttimerHTML(st)}</div>` : `<div class="ps ${d ? 'yes' : ''}">${esc(T(d ? 'dblYes' : 'dblNo'))}</div>`;
+  } else {
+    const tk = g.trick[s];
+    const turn = g.turn === s && st.phase === 'play';
+    if (turn) inner = `<div class="think">${esc(T('thinking'))} ${timerHTML(st)}</div>`;
+    else if (tk) inner = tk.pass ? `<div class="ps">${esc(T('pass'))}</div>` : mini(tk.ids) + `<small>${esc(trickLabel(tk))}</small>`;
+    old = !g.last && !turn ? 'old' : '';
+  }
+  return `<div class="slot s-${pos} ${old}">${inner}</div>`;
+}
+// 桌面正上方：底牌（地主确定前扣着），底分和当前倍数
+function dipaiHTML(st) {
+  const g = st.g;
+  const cards = g.lord >= 0 ? g.bottom.map((id) => cardEl(id)).join('') : g.bottom.map(backEl).join('');
+  const m = st.phase === 'roundEnd' && st.prev ? st.prev.m / H.BASE : H.mult(g);
+  return `<div class="dipai"><span class="lab">${esc(T('bottomT'))}</span><div class="mini">${cards}</div><div class="mul">${esc(T('baseLine', { b: H.BASE }))} · ${esc(T('multWord'))} <b>×${m}</b></div></div>`;
+}
+function bdText(p) {
+  const parts = [T('bdBase', { n: p.base })];
+  if (p.grabs) parts.push(T('bdGrab', { n: 2 ** p.grabs }));
+  if (p.bombs) parts.push(T('bdBomb', { n: 2 ** p.bombs }));
+  if (p.spring) parts.push(T('bdSpring'));
+  if (p.anti) parts.push(T('bdAnti'));
+  return parts.join(' · ') + ' → ' + T('bdTotal', { n: p.m });
+}
+function resultHTML(st, me) {
+  const p = st.prev;
+  const rows = SEATS.map((s) => {
+    const d = p.delta[s];
+    const tags = (s === p.lord ? lordTag() : farmTag()) + (p.dbl[s] ? dblTag() : '');
+    const left = p.left[s].length ? `<div class="mini">${p.left[s].map((id) => cardEl(id)).join('')}</div>` : '';
+    return `<li><b>${esc(seatName(st, s))}</b>${tags}<span class="dl ${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : ''}${d}</span>${left}</li>`;
+  }).join('');
+  const title = T(p.lordWin ? 'lordWinT' : 'farmWinT') + (p.spring ? ' · ' + T('springT') : p.anti ? ' · ' + T('antiT') : '');
+  const dn = p.dbl.some(Boolean) ? `<div class="bd">${esc(T('dblNote'))}</div>` : '';
+  const btn = `${readyBtnHTML(st, me, T('readyNext'))}<div class="lvl">${esc(T('readyCount', { n: readyCount(st) }))} · ${esc(T('autoDeal'))}</div>`;
+  return `<div class="panel"><div class="lvl">${esc(T('roundOver', { r: st.round }))}</div><div class="big">${esc(title)}</div><div class="bd">${esc(bdText(p))}</div><ul class="res rows">${rows}</ul>${dn}${btn}</div>`;
+}
+function panelHTML(st, me) {
+  const g = st.g;
+  if (st.paused) {
+    return `<div class="panel paused"><div class="lv">II</div><div class="big">${esc(T('pausedTitle'))}</div><div class="lvl">${esc(T('pausedBy', { name: seatName(st, st.paused.s) }))}</div>${me >= 0 ? `<button class="btn" data-act="resume" style="pointer-events:auto">${esc(T('resumeBtn'))}</button>` : ''}</div>`;
+  }
+  if (revealLeft(st)) {
+    return `<div class="panel reveal"><div class="lvl">${esc(T(g.redo ? 'redealTitle' : 'roundTitle', { r: st.round }))}</div><div class="big">${esc(T('markTitle'))}</div>${cardEl(g.mark)}<div class="lvl">${esc(T('markText'))}</div></div>`;
+  }
+  if (st.phase === 'roundEnd' && st.prev) return resultHTML(st, me);
+  return `<div class="center"><div class="lv">${esc(T('h1'))}</div></div>`;
+}
+
+function gameHTML(st, me) {
+  const g = st.g;
+  const base = me >= 0 ? me : 0;
+  // 出牌顺序：自己 → 下家（右上）→ 上家（左上）
+  const pos = ['bot', 'right', 'left'];
+  const seats = SEATS.map((k) => (base + k) % 3);
+  const rv = revealLeft(st) > 0;
+  let turnMsg = T('roundEnd'), tm = '';
+  if (st.paused) turnMsg = T('pausedTitle');
+  else if (st.phase === 'bid') { if (rv) turnMsg = T('dealingMsg'); else { turnMsg = g.turn === me ? T('yourBid') : T('waitBid', { name: seatName(st, g.turn) }); tm = timerHTML(st); } }
+  else if (st.phase === 'double') { turnMsg = T('doubling'); tm = ttimerHTML(st); }
+  else if (st.phase === 'play') { turnMsg = g.turn === me ? T('yourTurn') + (g.last ? '' : T('free')) : T('waitFor', { name: seatName(st, g.turn) }); tm = timerHTML(st); }
+  const canPause = me >= 0 && !st.paused && ['bid', 'double', 'play'].includes(st.phase);
+  const status = `<div class="status"><span>${esc(T('statusRound', { r: st.round }))}</span><span class="lvbig">${esc(T('h1'))}</span><span>${esc(T('baseLine', { b: H.BASE }))}</span><span class="turnmsg">${esc(turnMsg)}${tm && !st.paused ? ' · ' + tm + esc(T('secs')) : ''}</span>${canPause ? `<button class="btn sec small" data-act="pause">${esc(T('pauseBtn'))}</button>` : ''}</div>`;
+  const table = `<div class="felt table ${st.phase === 'roundEnd' ? 'ended' : ''}">${seats.map((s, k) => playerHTML(st, s, pos[k], me)).join('')}${dipaiHTML(st)}<div class="mid">${seats.map((s, k) => slotHTML(st, s, pos[k])).join('')}${panelHTML(st, me)}</div></div>`;
+  if (me < 0) return status + table + `<div class="handwrap"><span class="small">${esc(T('spectate'))}</span></div>`;
+  return status + table + handHTML(st, me);
+}
+
+function handHTML(st, me) {
+  const g = st.g, hand = g.hands[me];
+  if (revealLeft(st)) return `<div class="handwrap"><div class="dealing">${esc(T('dealingMsg'))}</div></div>`;
+  const groups = getGroups(hand);
+  const inG = new Set(groups.flat());
+  const main = H.sortHand(hand.filter((id) => !inG.has(id)));
+  // 决定牌亮完以后，手牌一张张落下
+  const since = st.phase === 'bid' && !g.bids.length ? nowOf(st) - (g.dealtAt + H.REVEAL_MS) : 1e9;
+  // 地主刚拿到的 3 张底牌，加倍阶段用金边标出来
+  const isNew = (id) => st.phase === 'double' && me === g.lord && g.bottom.includes(id);
+  const ce = (id, i) => {
+    let cls = (sel.has(id) ? 'up ' : '') + (drag && drag.ids.has(id) ? 'sweep ' : '') + (isNew(id) ? 'newc ' : '');
+    let style = '';
+    if (i != null && since < 1500) { cls += 'deal'; style = ` style="animation-delay:${Math.round(i * 40 - since)}ms"`; }
+    return cardEl(id, cls, true, style);
+  };
+  const store = groups.length ? `<div class="store"><span class="lab">${esc(T('store'))}</span>${groups.map((gr) => `<div class="grp">${gr.map((id) => ce(id)).join('')}</div>`).join('')}</div>` : '';
+  const selInStore = [...sel].some((id) => inG.has(id));
+  const arrange = `<button class="btn sec" data-act="tostore" ${sel.size ? '' : 'disabled'}>${esc(T('toStore'))}</button>${selInStore ? `<button class="btn sec" data-act="unstore">${esc(T('unstore'))}</button>` : ''}`;
+  const clear = `<button class="btn sec" data-act="clear" ${sel.size ? '' : 'disabled'}>${esc(T('clear'))}</button>`;
+  const pre = clear + arrange;
+  let ctrl = '';
+  if (st.paused) {
+    ctrl = `${pre}<span class="hint">${esc(T('pausedHint'))}</span>`;
+  } else if (st.phase === 'bid') {
+    if (g.turn === me) {
+      const call = g.caller < 0, fin = g.caller === me && g.bids.length >= 3;
+      ctrl = `<button class="btn" data-act="bid" data-v="1">${esc(T(call ? 'callBtn' : 'grabBtn'))}</button><button class="btn sec" data-act="bid" data-v="0">${esc(T(call ? 'nocallBtn' : 'nograbBtn'))}</button><span class="hint">${esc(T(call ? 'bidHintCall' : fin ? 'bidHintFinal' : 'bidHintGrab'))} · ${timerHTML(st)}${esc(T('secs'))}</span>`;
+    } else ctrl = `${pre}<span class="hint">${esc(T('waitBid', { name: seatName(st, g.turn) }))}</span>`;
+  } else if (st.phase === 'double') {
+    if (g.dbl[me] == null) ctrl = `<button class="btn" data-act="dbl" data-v="1">${esc(T('dblBtn'))}</button><button class="btn sec" data-act="dbl" data-v="0">${esc(T('nodblBtn'))}</button><span class="hint">${esc(T('dblHint'))} · ${ttimerHTML(st)}${esc(T('secs'))}</span>`;
+    else ctrl = `${pre}<span class="hint">${esc(T('dblChosen', { x: T(g.dbl[me] ? 'dblYes' : 'dblNo') }))}</span>`;
+  } else if (st.phase === 'play' && g.turn === me) {
+    const hint = g.last ? T('beatHint', { name: seatName(st, g.last.seat), label: trickLabel(g.trick[g.last.seat] || g.last), key: keyNameL(g.last) }) : T('leadHint');
+    ctrl = `<button class="btn" data-act="play" ${sel.size ? '' : 'disabled'}>${esc(T('play'))}</button>
+      <button class="btn sec" data-act="pass" ${g.last ? '' : 'disabled'}>${esc(T('pass'))}</button>${pre}<span class="hint">${esc(hint)}</span>`;
+  } else if (st.phase === 'play') {
+    ctrl = `${pre}<span class="hint">${esc(T('notTurn'))}</span>`;
+  } else ctrl = arrange;
+  const ch = choice ? `<div class="choose"><span class="hint">${esc(T('chooseHint'))}</span>${choice.map((o) => `<button class="btn sec" data-act="playas" data-t="${o.type}">${esc(describeL(o) + ' ' + keyNameL(o))}</button>`).join('')}</div>` : '';
+  return `<div class="handwrap"><div class="small">${esc(T('handTitle', { n: hand.length }))}</div><div class="hand">${main.map((id, i) => ce(id, i)).join('')}</div>${store}<div class="ctrl">${ctrl}</div>${ch}</div>`;
+}
+
+function chatLine(st, m) {
+  let text = m.text;
+  if (m.kind === 'act') text = T(m.item === 'tomato' ? 'actTomato' : 'actCoffee', { name: m.to != null ? seatName(st, m.to).replace(D().you, '') : '' });
+  else if (m.p != null && D().phrases[m.p]) text = D().phrases[m.p];
+  if (m.kind === 'stk') { const s = stk(m.text); if (s) return `<li><b>${esc(m.name || seatName(st, m.seat))}</b>${esc(D().sep)}<img class="inl" src="${s.src}" alt="${esc(stkName(s))}"></li>`; }
+  return `<li><b>${esc(m.name || seatName(st, m.seat))}</b>${esc(D().sep)}${esc(text)}</li>`;
+}
+function sideHTML(st, me) {
+  const top = Math.max(...st.scores);
+  const scores = SEATS.map((s) => {
+    const n = st.scores[s];
+    const last = st.prev && st.phase !== 'lobby' ? st.prev.delta[s] : null;
+    const lastHTML = last != null ? `<span class="last">${esc(T('lastRound', { d: (last > 0 ? '+' : '') + last }))}</span>` : '';
+    return `<div class="score ${n === top && n > 0 ? 'lead' : ''}"><span class="who">${esc(seatName(st, s))}${lastHTML}</span><span class="pts">${n > 0 ? '+' : ''}${n}</span></div>`;
+  }).join('');
+  let reset = '';
+  if (st.phase !== 'lobby' && me >= 0) {
+    const voted = (st.votes || []).includes(uid);
+    reset = `<div class="card"><h3>${esc(T('resetTitle'))}</h3><p class="small" style="margin:0 0 10px">${esc(T('resetText', { n: (st.votes || []).length }))}</p>
+      <button class="btn sec" data-act="${voted ? 'unvote' : 'vote'}">${esc(voted ? T('unvoteBtn') : T('voteBtn'))}</button></div>`;
+  }
+  const chat = chats[room].slice(-8).reverse().map((m) => chatLine(st, m)).join('');
+  const logs = st.log.slice(-14).reverse().map((m) => `<li>${logHTML(st, m)}</li>`).join('');
+  return `<div class="card"><h3>${esc(T('scoresT'))}</h3><p class="small" style="margin:0 0 4px">${esc(T('scoreNote'))}</p>${scores}</div>${reset}<div class="card"><h3>${esc(T('chat'))}</h3><ul class="log">${chat || `<li class="small">${esc(T('noChat'))}</li>`}</ul></div><div class="card"><h3>${esc(T('logT'))}</h3><ul class="log">${logs || `<li class="small">${esc(T('noLog'))}</li>`}</ul></div>
+   <div class="card small">${esc(T('saved'))}</div>`;
+}
+
+// ================= 数据读写 =================
+async function txWrite(col, r, fn) {
+  await runTransaction(db, async (tx) => {
+    const ref = doc(db, col, r);
+    const snap = await tx.get(ref);
+    const v = fn(snap.exists() ? JSON.parse(snap.data().s) : null);
+    if (v != null) tx.set(ref, { s: JSON.stringify(v) });
+  });
+}
+async function mutate(fn) {
+  if (!db || !uid) { toast(T('noDb')); return; }
+  try {
+    await txWrite('rooms', room, (st0) => {
+      const st = st0 || H.fresh(); const v = st.v || 0;
+      st._now = Date.now(); st._rng = rand;
+      const next = fn(st);
+      if (!next) return null;
+      delete next._now; delete next._rng; next.v = v + 1; return next;
+    });
+    return true;
+  } catch (e) {
+    toast(e && e.code === 'permission-denied' ? T('denied') : errText(e));
+  }
+}
+async function chatWrite(r, fn) {
+  try { await txWrite('chat', r, (l) => fn(l || [])); }
+  catch (e) { toast(e && e.code === 'permission-denied' ? T('chatDenied') : T('chatFail')); }
+}
+function needNick() { if (!nick.trim()) { toast(T('needNick')); $('#nick').focus(); return false; } return true; }
+function withName(s) { s.names = s.names || {}; s.names[uid] = nick.trim(); return s; }
+
+function onState() {
+  const st = cur(), me = st.seats.indexOf(uid);
+  const hand = st.g && me >= 0 ? st.g.hands[me] : [];
+  for (const id of [...sel]) if (!hand.includes(id)) sel.delete(id);
+  if (!(st.phase === 'play' && st.g && st.g.turn === me)) choice = null;
+  render();
+}
+
+// ================= 选牌：点击或按住滑动 =================
+let drag = null;
+const cardAt = (x, y) => { const el = document.elementFromPoint(x, y); const b = el && el.closest('.handwrap button.cd[data-id]'); return b ? +b.dataset.id : null; };
+document.addEventListener('pointerdown', (e) => {
+  const b = e.target.closest('.handwrap button.cd[data-id]');
+  if (!b || e.button > 0) return;
+  e.preventDefault();
+  const id = +b.dataset.id;
+  drag = { ids: new Set([id]), adding: !sel.has(id) };
+  b.classList.add('sweep');
+});
+document.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  const id = cardAt(e.clientX, e.clientY);
+  if (id != null && !drag.ids.has(id)) { drag.ids.add(id); const el = document.querySelector(`.handwrap button.cd[data-id="${id}"]`); if (el) el.classList.add('sweep'); }
+});
+function endDrag() {
+  if (!drag) return;
+  const d = drag; drag = null;
+  for (const id of d.ids) d.adding ? sel.add(id) : sel.delete(id);
+  choice = null;
+  render();
+}
+document.addEventListener('pointerup', endDrag);
+document.addEventListener('pointercancel', endDrag);
+
+document.addEventListener('click', async (e) => {
+  const cardBtn = e.target.closest('button.cd[data-id]');
+  if (cardBtn) {
+    if (e.detail === 0) { const id = +cardBtn.dataset.id; sel.has(id) ? sel.delete(id) : sel.add(id); choice = null; render(); }
+    return;
+  }
+  const t = e.target.closest('[data-act]');
+  if (!t || t.disabled) return;
+  const a = t.dataset.act;
+  const st = cur(), me = st.seats.indexOf(uid);
+  if (a === 'snd') { opt[t.dataset.k] = !opt[t.dataset.k]; ls.set('gd-snd', opt); lobby.on = undefined; if (!opt.voice && 'speechSynthesis' in window) speechSynthesis.cancel(); render(); return; }
+  if (a === 'lang') { lang = lang === 'zh' ? 'en' : 'zh'; ls.set('gd-lang', lang); applyStatic(); render(); return; }
+  if (a === 'emo') { sendChat('emo', t.dataset.v); return; }
+  if (a === 'stk') { sendChat('stk', t.dataset.v); return; }
+  if (a === 'throw') { sendThrow(t.dataset.item, +t.dataset.to); return; }
+  if (a === 'say') { sendChat('text', I18N.zh.phrases[+t.dataset.v], +t.dataset.v); return; }
+  if (a === 'room') { room = t.dataset.r; history.replaceState(null, '', room === 'd2' ? '#room2' : '#room1'); sel.clear(); choice = null; onState(); return; }
+  if (a === 'clear') { sel.clear(); choice = null; render(); return; }
+  if (a === 'tostore' || a === 'unstore') {
+    const hand = st.g.hands[me];
+    let gs = getGroups(hand).map((g) => g.filter((id) => !sel.has(id)));
+    if (a === 'tostore') gs.push(H.sortHand([...sel]));
+    setGroups(gs); sel.clear(); choice = null; render(); return;
+  }
+  if (a === 'sit') { if (!needNick()) return; return mutate((s) => withName(H.sit(s, uid, +t.dataset.i))); }
+  if (a === 'claim') {
+    if (!needNick()) return;
+    const i = +t.dataset.i;
+    return mutate((s) => {
+      if (s.seats.includes(uid)) throw new Error(T('haveSeat'));
+      const old = s.seats[i];
+      if (!old || ((s.names || {})[old] || '') !== nick.trim()) throw new Error(T('nickMismatch'));
+      s.seats[i] = uid; s.votes = (s.votes || []).map((v) => (v === old ? uid : v)); s.ready = (s.ready || []).map((v) => (v === old ? uid : v));
+      return withName(s);
+    });
+  }
+  if (a === 'leave') return mutate((s) => H.leave(s, uid));
+  if (a === 'pass') { sel.clear(); choice = null; return mutate((s) => H.pass(s, uid)); }
+  if (a === 'ready') { if (!needNick()) return; return mutate((s) => withName(H.setReady(s, uid, true, rand))); }
+  if (a === 'unready') return mutate((s) => H.setReady(s, uid, false, rand));
+  if (a === 'pause') return mutate((s) => H.pause(s, uid));
+  if (a === 'resume') return mutate((s) => H.resume(s, uid));
+  if (a === 'vote') return mutate((s) => H.vote(s, uid, true));
+  if (a === 'unvote') return mutate((s) => H.vote(s, uid, false));
+  if (a === 'bid') { const y = t.dataset.v === '1'; return mutate((s) => H.bid(s, uid, y)); }
+  if (a === 'dbl') { const y = t.dataset.v === '1'; return mutate((s) => H.double(s, uid, y)); }
+  if (a === 'play' || a === 'playas') {
+    const ids = [...sel];
+    let type = null;
+    if (a === 'play') {
+      const opts = H.options(st, ids);
+      if (!opts.length) { toast(D().err[st.g.last ? 'cantBeat' : 'invalidType']); return; }
+      if (opts.length > 1) { choice = opts; render(); return; }
+      type = opts[0].type;
+    } else type = t.dataset.t;
+    if (await mutate((s) => H.play(s, uid, ids, type))) { sel.clear(); choice = null; render(); }
+  }
+});
+
+applyStatic();
+$('#nick').value = nick;
+$('#nick').addEventListener('input', (e) => { nick = e.target.value; ls.set('gd-nick', nick); });
+renderSnd();
+(async () => {
+  if (!firebaseConfig.projectId) { fatal = { k: 'noConfig' }; render(); return; }
+  const timer = setTimeout(() => { if (!ready) { fatal = { k: 'noConn' }; render(); } }, 12000);
+  try {
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    db = getFirestore(app);
+    onAuthStateChanged(auth, (u) => {
+      if (!u || uid) return;
+      uid = u.uid;
+      buildChat();
+      for (const r of ROOMS) {
+        onSnapshot(doc(db, 'chat', r), (snap) => onChat(r, snap.exists() ? JSON.parse(snap.data().s) : []), () => {});
+        onSnapshot(doc(db, 'rooms', r), (snap) => {
+          clearTimeout(timer);
+          ready = true; fatal = null;
+          states[r] = snap.exists() ? JSON.parse(snap.data().s) : null;
+          if (states[r]) handleEvent(r, states[r]); else evSeen[r] = 0;
+          onState();
+        }, (e) => { clearTimeout(timer); fatal = { k: 'readFail', p: { c: e.code } }; render(); });
+      }
+    });
+    await signInAnonymously(auth);
+  } catch (e) { clearTimeout(timer); fatal = { k: 'fbFail', p: { c: e.code || e.message } }; render(); }
+})();
+}
+</script>
+</body>
+</html>
