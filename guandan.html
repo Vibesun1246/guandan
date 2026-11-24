@@ -300,6 +300,8 @@ const G = (() => {
   // 炸弹大小：4张(1xx) < 5张(2xx) < 同花顺/顶同(3xx) < 6张(4xx) < 7张(5xx) < 8张(6xx) < 四王(10000)
   function beats(p, q) {
     if (!q) return true;
+    // 钢板只能用5张及以上的炸弹管（同花顺、6张炸、四王等也可以），4张炸管不了
+    if (p.bomb && !q.bomb && q.type === 'plate' && p.type === 'bomb' && p.n === 4) return false;
     if (p.bomb) return q.bomb ? p.bomb > q.bomb : true;
     if (q.bomb) return false;
     return p.type === q.type && p.n === q.n && p.key > q.key;
@@ -688,7 +690,7 @@ const I18N = {
     emoTitle: '表情和快捷短语', emoAria: '发送表情 {e}', chatPh: '自己说点什么（最多20字）', send: '发送', seatFirst: '入座后才能发消息', tooFast: '发得太快了，歇一下',
     coffeeLabel: '请喝一杯卡布奇诺 ☕', actTomato: '向 {name} 扔了一个番茄', actCoffee: '给 {name} 倒了一杯卡布奇诺', yourTurnTitle: '轮到你了 · ',
     types: { single: '单张', pair: '对子', triple: '三张', full: '三带二', straight: '顺子', tube: '三连对', plate: '钢板', kings: '四王炸', bomb: '{n}张炸', sf: '同花顺', royal: '顶同' },
-    keyTo: '到{r}', and: '和', readyBtn: '准备', readyNext: '准备下一局', unready: '取消准备', readyTag: '已准备', readyCount: '已准备 {n}/4', autoDeal: '4人都准备好后自动发牌', secs: '秒', pauseBtn: '暂停', resumeBtn: '继续游戏', pausedTitle: '牌局已暂停', pausedBy: '{name} 按了暂停。大家准备好后，任何一位玩家都可以点“继续游戏”。', pausedHint: '牌局暂停中，暂时不能出牌',
+    keyTo: '到{r}', and: '和', plateNeeds5: '钢板要用5张或以上的炸弹才能管，4张炸不行', readyBtn: '准备', readyNext: '准备下一局', unready: '取消准备', readyTag: '已准备', readyCount: '已准备 {n}/4', autoDeal: '4人都准备好后自动发牌', secs: '秒', pauseBtn: '暂停', resumeBtn: '继续游戏', pausedTitle: '牌局已暂停', pausedBy: '{name} 按了暂停。大家准备好后，任何一位玩家都可以点“继续游戏”。', pausedHint: '牌局暂停中，暂时不能出牌',
     phrases: ['快点出牌呀，等得我都饿了', '这把稳了！', '队友给力！', '我有炸，放心走', '先别炸，留着', '你走，我掩护', '要大牌，别给小的', '我要放大招了', '手气太差了……', '再来一盘！', '配合愉快，谢谢队友'],
     err: { notSeated: '你还没有入座', inGameNoSwap: '游戏进行中，不能换座', seatTaken: '这个座位已经有人了', inGameNoLeave: '游戏进行中，不能离座', started: '游戏已经开始了',
       needFour: '需要4个人坐满才能开始', notTribute: '现在不是进贡阶段', noTributeNeeded: '你不需要进贡', notInHand: '这张牌不在你手里', mustBeMax: '进贡必须是你手里最大的牌',
@@ -729,7 +731,7 @@ const I18N = {
     emoTitle: 'Emotes and quick phrases', emoAria: 'Send emote {e}', chatPh: 'Say something (up to 20 characters)', send: 'Send', seatFirst: 'Take a seat to send messages', tooFast: 'Slow down a little',
     coffeeLabel: 'Have a cappuccino ☕', actTomato: 'threw a tomato at {name}', actCoffee: 'poured {name} a cappuccino', yourTurnTitle: 'Your turn · ',
     types: { single: 'Single', pair: 'Pair', triple: 'Triple', full: 'Full house', straight: 'Straight', tube: 'Three pairs', plate: 'Steel plate', kings: 'Four Jokers', bomb: '{n}-card bomb', sf: 'Straight flush', royal: 'Royal flush' },
-    keyTo: 'up to {r}', and: ' and ', readyBtn: 'Ready', readyNext: 'Ready for next round', unready: 'Cancel ready', readyTag: 'Ready', readyCount: '{n}/4 ready', autoDeal: 'cards are dealt once all 4 are ready', secs: 's', pauseBtn: 'Pause', resumeBtn: 'Resume game', pausedTitle: 'Game paused', pausedBy: '{name} paused the game. When everyone is ready, any player can tap “Resume game”.', pausedHint: 'The game is paused — no plays until it resumes',
+    keyTo: 'up to {r}', and: ' and ', plateNeeds5: 'A steel plate can only be beaten by a bomb of 5 or more cards — a 4-card bomb is not enough', readyBtn: 'Ready', readyNext: 'Ready for next round', unready: 'Cancel ready', readyTag: 'Ready', readyCount: '{n}/4 ready', autoDeal: 'cards are dealt once all 4 are ready', secs: 's', pauseBtn: 'Pause', resumeBtn: 'Resume game', pausedTitle: 'Game paused', pausedBy: '{name} paused the game. When everyone is ready, any player can tap “Resume game”.', pausedHint: 'The game is paused — no plays until it resumes',
     phrases: ["Hurry up, I'm getting hungry", "We've got this one!", 'Nice one, partner!', 'I have a bomb — go for it', "Don't bomb yet, save it", "You go, I'll cover you", 'Play high, not low', 'Big move incoming', 'My cards are awful…', 'One more match!', 'Great teamwork, thanks partner'],
     err: { notSeated: "You haven't taken a seat", inGameNoSwap: "You can't change seats during a match", seatTaken: 'That seat is taken', inGameNoLeave: "You can't leave your seat during a match", started: 'The game has already started',
       needFour: 'All 4 seats must be filled to start', notTribute: "It's not the tribute stage", noTributeNeeded: "You don't need to pay tribute", notInHand: "That card isn't in your hand", mustBeMax: 'Tribute must be your highest card',
@@ -1427,7 +1429,10 @@ document.addEventListener('click', async (e) => {
     let type = null;
     if (a === 'play') {
       const opts = G.options(st, ids);
-      if (!opts.length) { toast(D().err[st.g.last ? 'cantBeat' : 'invalidType']); return; }
+      if (!opts.length) {
+        const four = st.g.last && st.g.last.type === 'plate' && G.analyze(ids, st.g.L).some((o) => o.type === 'bomb' && o.n === 4);
+        toast(four ? T('plateNeeds5') : D().err[st.g.last ? 'cantBeat' : 'invalidType']); return;
+      }
       if (opts.length > 1) { choice = opts; render(); return; }
       type = opts[0].type;
     } else type = t.dataset.t;
