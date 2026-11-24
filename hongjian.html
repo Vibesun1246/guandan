@@ -262,7 +262,7 @@ let sel = new Set(), choice = null, toastT = 0;
 const opt = Object.assign({ music: true, sfx: true, voice: true }, ls.get('gd-snd', {}));
 const vol = Object.assign({ music: 60, sfx: 70, voice: 50 }, ls.get('gd-vol', {}));
 // 每个滑块的 100% 对应的实际音量（滑块默认值约为原来的大小）
-const MAXV = { music: 0.075, sfx: 0.5, lobby: 0.15 };
+const MAXV = { music: 0.075, sfx: 0.5, lobby: 0.21 };
 const lobbyVol = () => MAXV.lobby * vol.music / 100;
 
 const I18N = {
@@ -272,7 +272,7 @@ const I18N = {
     langBtn: 'English', empty: '空座', player: '玩家', you: '（你）', pos: ['头游', '二游', '三游', '末游'],
     bigJoker: '大王', smallJoker: '小王', jokerFace: ['小王', '大王'],
     seatClick: '点击坐下', mySeat: '这是你的座位', taken: '已入座',
-    lobbyHelp: '选一个座位坐下。队伍是暗的：拿到红A（♥A、♦A）的人是一队，一个人拿到两张红A就一打三。',
+    lobbyHelp: '选一个座位坐下。队伍是暗的：拿到红A（♥A、♦A）的人是一队，一个人拿到两张红A就一打三。先出完的一队获胜。',
     waitFour: '等待4人坐满', leave: '离开座位', myCount: '{n} 张', left: '剩 {n} 张', claim: '这是我的座位',
     tomatoAria: '向{name}扔番茄', tomatoTitle: '扔番茄', coffeeAria: '给{name}倒咖啡', coffeeTitle: '倒咖啡', thinking: '出牌中…', pass: '不出',
     roundOver: '第 {r} 局结束', resetLobby: '重置，回到选座大厅', yourTurn: '轮到你出牌', free: '（自由出牌）',
@@ -320,7 +320,7 @@ const I18N = {
     langBtn: '中文', empty: 'Empty seat', player: 'Player', you: ' (you)', pos: ['1st out', '2nd out', '3rd out', 'Last out'],
     bigJoker: 'Big Joker', smallJoker: 'Small Joker', jokerFace: ['JOKER', 'JOKER'],
     seatClick: 'Tap to sit', mySeat: 'Your seat', taken: 'Taken',
-    lobbyHelp: 'Pick a seat. Teams are hidden: whoever holds a red Ace (A♥, A♦) is on the same team. One player with both red Aces plays 1 vs 3.',
+    lobbyHelp: 'Pick a seat. Teams are hidden: whoever holds a red Ace (A♥, A♦) is on the same team. One player with both red Aces plays 1 vs 3. The first team to play out all its cards wins.',
     waitFour: 'Waiting for 4 players', leave: 'Leave seat', myCount: '{n} cards', left: '{n} left', claim: 'This is my seat',
     tomatoAria: 'Throw a tomato at {name}', tomatoTitle: 'Throw a tomato', coffeeAria: 'Pour coffee for {name}', coffeeTitle: 'Pour coffee', thinking: 'Thinking…', pass: 'Pass',
     roundOver: 'Round {r} finished', resetLobby: 'Reset and return to the lobby', yourTurn: 'Your turn', free: ' (free lead)',

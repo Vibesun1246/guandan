@@ -46,7 +46,6 @@ main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;padding
 .room:hover,.room:focus-visible{background:rgba(0,0,0,.4);outline:none;box-shadow:0 0 0 3px var(--gold)}
 .room span{font-weight:400;font-size:13px;opacity:.85}
 .room .busy{color:#ffd36b;font-weight:700;opacity:1}
-footer{max-width:1100px;margin:0 auto;padding:0 max(4vw,14px) 30px;color:var(--sub);font-size:14px}
 </style>
 </head>
 <body>
@@ -77,7 +76,6 @@ footer{max-width:1100px;margin:0 auto;padding:0 max(4vw,14px) 30px;color:var(--s
     </div>
   </section>
 </main>
-<footer data-i18n="foot">昵称、音量和语言设置在两个游戏里通用。</footer>
 <script type="module">
 const firebaseConfig = {
   apiKey: "AIzaSyAY-NSXB49J0xsfXDf2cDRCgofb2tu6c5c",
@@ -94,11 +92,11 @@ const I18N = {
   zh: { title: '好友牌局', h1: '好友牌局', sub: '选一个游戏，进房间，和朋友开打', langBtn: 'English', gd: '掼蛋', gdTag: '2 对 2 · 两副牌', hj: '红尖', hjTag: '暗中组队 · 一副牌',
     gdText: '对家是队友，打级升级，先过A的一队赢。♥和♦的级牌是万能牌。',
     hjText: '斗地主的出牌规则。拿到红A（♥A、♦A）的人是一队，谁和谁一队要靠观察猜；一人拿两张红A就一打三。先到11分获胜。',
-    music: '背景音乐', musicAria: '背景音乐音量', room1: '1号房间', room2: '2号房间', people: '{n}/4 人', inGame: '对局中 · {n}/4 人', loading: '…', foot: '昵称、音量和语言设置在两个游戏里通用。' },
+    music: '背景音乐', musicAria: '背景音乐音量', room1: '1号房间', room2: '2号房间', people: '{n}/4 人', inGame: '对局中 · {n}/4 人', loading: '…' },
   en: { title: 'Card Night', h1: 'Card Night', sub: 'Pick a game, join a room, play with friends', langBtn: '中文', gd: 'Guandan', gdTag: '2 vs 2 · two decks', hj: 'Red A', hjTag: 'hidden teams · one deck',
     gdText: 'Partners sit across. Climb the levels — the first team to pass A wins. Red level cards (♥, ♦) are wild.',
     hjText: 'Dou Dizhu card play. Whoever holds a red Ace (A♥, A♦) is on the same team — work out who from the cards they play. Both red Aces means 1 vs 3. First to 11 points wins.',
-    music: 'Music', musicAria: 'Music volume', room1: 'Room 1', room2: 'Room 2', people: '{n}/4 seated', inGame: 'In game · {n}/4', loading: '…', foot: 'Your nickname, volume and language carry over between both games.' },
+    music: 'Music', musicAria: 'Music volume', room1: 'Room 1', room2: 'Room 2', people: '{n}/4 seated', inGame: 'In game · {n}/4', loading: '…' },
 };
 let lang = 'zh';
 try { const v = JSON.parse(localStorage.getItem('gd-lang')); if (I18N[v]) lang = v; else if (!/^zh/i.test(navigator.language || '')) lang = 'en'; } catch (e) {}
@@ -120,7 +118,7 @@ function render() {
 }
 // ================= 大厅背景音乐（hall.mp3）=================
 // 和两个游戏共用“背景音乐”的开关和音量（同一套浏览器设置）
-// hall.mp3 已经预先调小（约 -38 LUFS），和牌桌上的背景音乐在同一音量档位上一样大；
+// hall.mp3 已经预先调小（约 -34 LUFS，比牌桌上的背景音乐稍大一点）；
 // 这样即使在不能用网页调音量的 iPhone 上，也不会突然很响
 const HALL_MAX = 1;
 const getLS = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };

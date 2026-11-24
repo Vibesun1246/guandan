@@ -655,7 +655,7 @@ let sel = new Set(), choice = null, toastT = 0;
 const opt = Object.assign({ music: true, sfx: true, voice: true }, ls.get('gd-snd', {}));
 const vol = Object.assign({ music: 60, sfx: 70, voice: 50 }, ls.get('gd-vol', {}));
 // 每个滑块的 100% 对应的实际音量（滑块默认值约为原来的大小）
-const MAXV = { music: 0.075, sfx: 0.5, lobby: 0.15 };
+const MAXV = { music: 0.075, sfx: 0.5, lobby: 0.21 };
 const lobbyVol = () => MAXV.lobby * vol.music / 100;
 
 // ================= 语言 / Language =================
