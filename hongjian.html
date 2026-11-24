@@ -163,8 +163,9 @@ aside{display:flex;flex-direction:column;gap:14px}
 @media(prefers-reduced-motion:reduce){.cd{transition:none}.bubble{animation:none}}
 /* ===== 红尖：深酒红牌桌 ===== */
 :root{--bg:light-dark(#efe4df,#14080a);--ink:light-dark(#2a1a1d,#f1e7e8);--sub:light-dark(#6e5458,#b9a0a4);--panel:light-dark(#fffaf6,#24100f);--line:light-dark(#dcc5bf,#46232a);--felt:#7a1d2c;--felt2:#470d17}
-.felt{background:radial-gradient(ellipse at 50% 45%,#9c2b3c,var(--felt) 50%,var(--felt2))}
-.meta,.lvl,.info p{color:#f0d5d9}
+/* 桌面中心压暗一些，看字不刺眼 */
+.felt{background:radial-gradient(ellipse at 50% 45%,#6e1d2a,#561421 50%,#350912)}
+.meta,.lvl,.info p{color:#e6dcdd}
 .ps{color:#f6e3e6}
 .think{color:#f3dde0}
 .panel{background:rgba(42,6,14,.9)}
@@ -175,8 +176,10 @@ aside{display:flex;flex-direction:column;gap:14px}
 :root[data-theme=dark] .status .lvbig{color:var(--gold)}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]) .status .lvbig{color:var(--gold)}}
 a.tab{display:inline-flex;align-items:center;text-decoration:none}
-.seat{border-color:rgba(255,220,225,.5)}
-.seat.taken{border-color:var(--gold)}
+.seat{border-color:rgba(255,255,255,.26);background:rgba(0,0,0,.26)}
+.seat.taken{border-color:rgba(232,180,58,.75)}
+.seat.me{box-shadow:0 0 0 2px rgba(232,180,58,.35) inset}
+.pl{background:rgba(0,0,0,.26)}
 .tg.red{background:#ffb3bd;color:#4a0f18}
 /* 打出的红A：淡红色轮廓，像信号灯一样闪 4 下（每下约半秒），之后保持不闪 */
 .cd.reda{position:relative;z-index:2;outline:3px solid rgba(255,150,160,.95);outline-offset:2px;box-shadow:0 0 10px 2px rgba(255,120,135,.55)}

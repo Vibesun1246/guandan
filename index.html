@@ -18,12 +18,20 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Noto Sans SC
 header{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding:22px max(4vw,14px) 8px;max-width:1100px;margin:0 auto}
 h1{font:900 38px/1.05 "Noto Serif SC",serif;margin:0;letter-spacing:.04em}
 h1 small{display:block;font:500 15px "Noto Sans SC",sans-serif;color:var(--sub);margin-top:8px;letter-spacing:0}
-.lang{margin-left:auto;min-height:44px;padding:6px 16px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit;font-weight:700;cursor:pointer}
+.tools{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.vol{display:flex;align-items:center;gap:8px;padding:4px 12px 4px 4px;border-radius:999px;border:1px solid var(--line);background:var(--panel)}
+.vol button{min-height:36px;padding:2px 12px;border-radius:999px;border:0;background:transparent;color:var(--sub);font:inherit;font-size:14px;white-space:nowrap;cursor:pointer}
+.vol button[aria-pressed=true]{background:var(--wood);color:#fff}
+.vol input{width:96px;accent-color:var(--wood);height:28px}
+.vol output{font-size:12px;color:var(--sub);width:2.4em;text-align:right;font-variant-numeric:tabular-nums}
+.vol.off input,.vol.off output{opacity:.4}
+@media(max-width:600px){.tools{margin-left:0;width:100%}.vol{flex:1}.vol input{flex:1;width:auto}}
+.lang{min-height:44px;padding:6px 16px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit;font-weight:700;cursor:pointer}
 main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;padding:18px max(4vw,14px) 40px;max-width:1100px;margin:0 auto}
 @media(max-width:760px){main{grid-template-columns:minmax(0,1fr)}h1{font-size:32px}}
 .game{border:12px solid var(--wood);border-radius:30px;box-shadow:inset 0 0 40px rgba(0,0,0,.45),0 10px 30px rgba(0,0,0,.25);color:#fff;padding:26px 26px 22px;display:flex;flex-direction:column;gap:14px;min-height:330px}
 .gd{background:radial-gradient(ellipse at 50% 40%,#1c7a4c,#13603b 55%,#0b3f26)}
-.hj{background:radial-gradient(ellipse at 50% 40%,#9c2b3c,#7a1d2c 55%,#470d17)}
+.hj{background:radial-gradient(ellipse at 50% 40%,#6e1d2a,#561421 55%,#350912)}
 .game h2{font:900 46px/1 "Noto Serif SC",serif;margin:0;letter-spacing:.06em}
 .game h2 small{font:500 15px "Noto Sans SC",sans-serif;opacity:.8;margin-left:10px;letter-spacing:0}
 .game p{margin:0;font-size:15px;opacity:.92;max-width:34em}
@@ -44,7 +52,10 @@ footer{max-width:1100px;margin:0 auto;padding:0 max(4vw,14px) 30px;color:var(--s
 <body>
 <header>
   <h1><span data-i18n="h1">好友牌局</span><small data-i18n="sub">选一个游戏，进房间，和朋友开打</small></h1>
-  <button class="lang" type="button" id="lang" data-i18n="langBtn">English</button>
+  <div class="tools">
+    <div class="vol" id="musicBox"><button type="button" id="musicBtn" aria-pressed="true" data-i18n="music">背景音乐</button><input type="range" min="0" max="100" step="5" id="musicVol"><output id="musicOut"></output></div>
+    <button class="lang" type="button" id="lang" data-i18n="langBtn">English</button>
+  </div>
 </header>
 <main>
   <section class="game gd" aria-labelledby="gdT">
@@ -83,11 +94,11 @@ const I18N = {
   zh: { title: '好友牌局', h1: '好友牌局', sub: '选一个游戏，进房间，和朋友开打', langBtn: 'English', gd: '掼蛋', gdTag: '2 对 2 · 两副牌', hj: '红尖', hjTag: '暗中组队 · 一副牌',
     gdText: '对家是队友，打级升级，先过A的一队赢。♥和♦的级牌是万能牌。',
     hjText: '斗地主的出牌规则。拿到红A（♥A、♦A）的人是一队，谁和谁一队要靠观察猜；一人拿两张红A就一打三。先到11分获胜。',
-    room1: '1号房间', room2: '2号房间', people: '{n}/4 人', inGame: '对局中 · {n}/4 人', loading: '…', foot: '昵称、音量和语言设置在两个游戏里通用。' },
+    music: '背景音乐', musicAria: '背景音乐音量', room1: '1号房间', room2: '2号房间', people: '{n}/4 人', inGame: '对局中 · {n}/4 人', loading: '…', foot: '昵称、音量和语言设置在两个游戏里通用。' },
   en: { title: 'Card Night', h1: 'Card Night', sub: 'Pick a game, join a room, play with friends', langBtn: '中文', gd: 'Guandan', gdTag: '2 vs 2 · two decks', hj: 'Red A', hjTag: 'hidden teams · one deck',
     gdText: 'Partners sit across. Climb the levels — the first team to pass A wins. Red level cards (♥, ♦) are wild.',
     hjText: 'Dou Dizhu card play. Whoever holds a red Ace (A♥, A♦) is on the same team — work out who from the cards they play. Both red Aces means 1 vs 3. First to 11 points wins.',
-    room1: 'Room 1', room2: 'Room 2', people: '{n}/4 seated', inGame: 'In game · {n}/4', loading: '…', foot: 'Your nickname, volume and language carry over between both games.' },
+    music: 'Music', musicAria: 'Music volume', room1: 'Room 1', room2: 'Room 2', people: '{n}/4 seated', inGame: 'In game · {n}/4', loading: '…', foot: 'Your nickname, volume and language carry over between both games.' },
 };
 let lang = 'zh';
 try { const v = JSON.parse(localStorage.getItem('gd-lang')); if (I18N[v]) lang = v; else if (!/^zh/i.test(navigator.language || '')) lang = 'en'; } catch (e) {}
@@ -97,6 +108,7 @@ function render() {
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en-CA';
   document.title = T('title');
   document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = T(el.dataset.i18n); });
+  if (typeof renderMusic === 'function') renderMusic();
   document.querySelectorAll('[data-st]').forEach((el) => {
     const s = st[el.dataset.st];
     if (s === undefined) { el.textContent = T('loading'); el.className = ''; return; }
@@ -106,6 +118,57 @@ function render() {
     el.className = busy ? 'busy' : '';
   });
 }
+// ================= 大厅背景音乐（hall.mp3）=================
+// 和两个游戏共用“背景音乐”的开关和音量（同一套浏览器设置）
+// hall.mp3 已经预先调小（约 -38 LUFS），和牌桌上的背景音乐在同一音量档位上一样大；
+// 这样即使在不能用网页调音量的 iPhone 上，也不会突然很响
+const HALL_MAX = 1;
+const getLS = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
+const setLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+const opt = Object.assign({ music: true, sfx: true, voice: true }, getLS('gd-snd', {}));
+const vol = Object.assign({ music: 60, sfx: 70, voice: 50 }, getLS('gd-vol', {}));
+const hall = new Audio('hall.mp3');
+hall.loop = true; hall.preload = 'auto'; hall.volume = 0;
+let fadeT = 0;
+const target = () => Math.min(1, HALL_MAX * vol.music / 100);
+function fadeTo(on) {
+  clearInterval(fadeT);
+  // 浏览器不让自动播放时，音量归零，等点击后再慢慢淡入
+  if (on && hall.paused) hall.play().catch(() => { clearInterval(fadeT); hall.volume = 0; });
+  fadeT = setInterval(() => {
+    const v = hall.volume + (on ? 0.03 : -0.05);
+    hall.volume = Math.max(0, Math.min(target(), v));
+    if (on && hall.volume >= target()) clearInterval(fadeT);
+    if (!on && hall.volume <= 0) { clearInterval(fadeT); hall.pause(); }
+  }, 60);
+}
+function syncHall() { fadeTo(!!opt.music && vol.music > 0); }
+function renderMusic() {
+  document.getElementById('musicBtn').setAttribute('aria-pressed', !!opt.music);
+  document.getElementById('musicBox').classList.toggle('off', !opt.music);
+  const r = document.getElementById('musicVol');
+  if (document.activeElement !== r) r.value = vol.music;
+  r.setAttribute('aria-label', T('musicAria'));
+  document.getElementById('musicOut').textContent = vol.music + '%';
+}
+// 浏览器要求先点一下页面才能放声音：能自动播就自动播，不行就等第一次点击或按键
+syncHall();
+const unlock = (e) => { if (e.target.closest && e.target.closest('#musicBtn')) return; if (opt.music && vol.music > 0 && hall.paused) syncHall(); };
+document.addEventListener('pointerdown', unlock, true);
+document.addEventListener('keydown', unlock, true);
+document.getElementById('musicBtn').addEventListener('click', () => {
+  // 音乐是“开”但浏览器还没让它响：这一下先让它响起来，而不是关掉
+  if (opt.music && vol.music > 0 && hall.paused) { syncHall(); return; }
+  opt.music = !opt.music; setLS('gd-snd', opt); syncHall(); renderMusic(); });
+document.getElementById('musicVol').addEventListener('input', (e) => {
+  vol.music = +e.target.value; setLS('gd-vol', vol);
+  if (!opt.music && vol.music > 0) { opt.music = true; setLS('gd-snd', opt); }
+  clearInterval(fadeT);
+  if (opt.music && vol.music > 0) { if (hall.paused) hall.play().catch(() => {}); hall.volume = target(); } else fadeTo(false);
+  renderMusic();
+});
+// 在别的标签页改了设置时同步
+addEventListener('storage', (e) => { if (e.key === 'gd-snd' || e.key === 'gd-vol') { Object.assign(opt, getLS('gd-snd', {})); Object.assign(vol, getLS('gd-vol', {})); syncHall(); renderMusic(); } });
 document.getElementById('lang').addEventListener('click', () => { lang = lang === 'zh' ? 'en' : 'zh'; try { localStorage.setItem('gd-lang', JSON.stringify(lang)); } catch (e) {} render(); });
 render();
 try {
