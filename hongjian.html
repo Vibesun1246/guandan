@@ -613,12 +613,21 @@ document.addEventListener('change', (e) => {
 });
 
 // ================= 存储区（只保存在自己的浏览器里） =================
-const storeKey = () => { const st = cur(); return `hj-store:${room}:${st.round}:${uid}`; };
+// 存储区按“这一副牌”的编号保存：重置或开新一盘后局数会重新从1数，不能只用局数，否则旧记录会把新发的同号牌错放进存储区
+const storeKey = () => { const st = cur(); const g = st.g; return g && g.did ? `hj-store:${room}:${g.did}:${uid}` : `hj-store:${room}:${st.round}:${uid}`; };
+function cleanStores(keep) {
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('hj-store:' + room + ':') && k.endsWith(':' + uid) && k !== keep) localStorage.removeItem(k);
+    }
+  } catch (e) {}
+}
 function getGroups(hand) {
   const gs = ls.get(storeKey(), []).map((g) => g.filter((id) => hand.includes(id))).filter((g) => g.length);
   return gs;
 }
-function setGroups(gs) { ls.set(storeKey(), gs.filter((g) => g.length)); }
+function setGroups(gs) { const k = storeKey(); cleanStores(k); ls.set(k, gs.filter((g) => g.length)); }
 
 // ================= 聊天与表情 =================
 // 自定义表情包（图片内嵌在网页里）

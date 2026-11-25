@@ -155,7 +155,7 @@ const H = (() => {
     let p = 0;
     for (let k = 0; k < 4; k++) { const s = (s0 + k) % 4, size = k < 2 ? 14 : 13; hands[s] = d.slice(p, p + size); p += size; }
     const red = [...new Set(RED_A.map((id) => hands.findIndex((h) => h.includes(id))))].sort();
-    const g = { hands, red, solo: red.length === 1 ? red[0] : -1, s0, turn: -1, last: null, passes: 0, trick: {}, done: [], trib: null, turnAt: 0 };
+    const g = { hands, red, solo: red.length === 1 ? red[0] : -1, s0, turn: -1, last: null, passes: 0, trick: {}, done: [], trib: null, turnAt: 0, did: Math.floor(rng() * 1e9).toString(36) + Date.now().toString(36) };
     st.g = g;
     st.votes = [];
     st.ready = [];

@@ -156,6 +156,7 @@ const DDZ = (() => {
       bids: [], caller: -1, grabber: -1, grabs: 0, lord: -1,
       dbl: [null, null, null], dblAt: 0,
       last: null, passes: 0, trick: {}, bombs: 0, cnt: [0, 0, 0],
+      did: Math.floor(rng() * 1e9).toString(36) + Date.now().toString(36),
     };
     st.phase = 'bid';
     st.votes = [];
