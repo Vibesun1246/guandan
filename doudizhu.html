@@ -226,6 +226,16 @@ a.tab{display:inline-flex;align-items:center;text-decoration:none}
 .table.ended .mid{min-height:400px}
 .status .ttimer,.ctrl .ttimer{color:inherit}.status .ttimer.low,.ctrl .ttimer.low{color:#e5484d}
 .badge.out{background:#86e3a9;color:#0b3a1e}
+/* 换人：空座、打完就走、请离座、已离开的分数 */
+.pl.emptyseat{border:2px dashed rgba(255,255,255,.32);background:rgba(0,0,0,.12)}
+.pl.emptyseat .nm{opacity:.8}
+.tg.leaving{background:#ffb4a8;color:#4a1008}
+.kickbtn{margin-top:4px;color:#fff;border-color:rgba(255,255,255,.45)}
+.score.empty .who,.score.empty .pts{color:var(--sub)}
+.gone{margin-top:8px;padding-top:6px;border-top:1px dashed var(--line)}
+.gone .score{opacity:.62;padding:4px 0;border-top:0}.gone .score .pts{font-size:20px}
+.endacts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+hr.sep{border:0;border-top:1px dashed var(--line);margin:14px 0 10px}
 .ttimer{font-variant-numeric:tabular-nums;font-weight:900;color:#ffd36b}.ttimer.low{color:#ff8a8a}
 .score{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line)}
 .score:first-of-type{border-top:0}
@@ -332,7 +342,7 @@ const I18N = {
     langBtn: 'English', empty: '空座', player: '玩家', you: '（你）',
     bigJoker: '大王', smallJoker: '小王', jokerFace: ['小王', '大王'],
     seatClick: '点击坐下', mySeat: '这是你的座位', taken: '已入座',
-    lobbyHelp: '三人一桌。叫地主、抢地主后，地主一个人对两个农民。底分2分，抢地主、炸弹、王炸、春天都会翻倍；地主确定后每人可以选择加倍。分数一直累计。',
+    lobbyHelp: '三人一桌。叫地主、抢地主后，地主一个人对两个农民。底分2分，抢地主、炸弹、王炸、春天都会翻倍；地主确定后每人可以选择加倍。分数一直累计；每局结束后可以换人，离开的人分数会保存。',
     waitThree: '等待3人坐满', leave: '离开座位', myCount: '{n} 张', left: '剩 {n} 张', claim: '这是我的座位',
     tomatoAria: '向{name}扔番茄', tomatoTitle: '扔番茄', coffeeAria: '给{name}倒咖啡', coffeeTitle: '倒咖啡', thinking: '出牌中…', bidThinking: '考虑中…', considering: '考虑中…', pass: '不出',
     roundOver: '第 {r} 局结束', endLast: '最后出', endLeft: '剩余', finalPlay: '最后一手', rvTitle: '本局剩余手牌（全部明牌）', rvOut: '已出完', rvCount: '剩 {n} 张', yourTurn: '轮到你出牌', free: '（自由出牌）',
@@ -341,7 +351,10 @@ const I18N = {
     store: '存储区', toStore: '放进存储区', unstore: '移回手牌', play: '出牌', clear: '清空选择', beatHint: '要管上 {name} 的{label} {key}',
     leadHint: '你先出，任意合法牌型都可以',
     notTurn: '还没轮到你，可以先理牌、选好牌', chooseHint: '这手牌有几种出法，选一种：', handTitle: '你的手牌（{n} 张）· 点牌或按住滑过多张牌来选中，再点一次取消',
-    scoresT: '积分', scoreNote: '底分2分，分数一直累计', lastRound: '上一局 {d}', resetTitle: '中途重置', resetText: '3个人都同意后，积分清零，回到选座大厅。目前 {n}/3 人同意。',
+    scoresT: '积分', scoreNote: '底分2分，分数一直累计；分数跟着人走', lastRound: '上一局 {d}', resetTitle: '清零重开', resetText: '在座的人都同意后，所有人的积分（包括已离开的人）清零，回到选座大厅。目前 {n}/{m} 人同意。',
+    seatTitle: '离开 / 换人', leaveTable: '离开牌桌', leaveLaterBtn: '打完这局就走', stayBtn: '取消，继续打', leaveLaterNote: '这局照常打完，结算时自动帮你离座，分数会保存。', leavingNote: '你已选择打完这局就走，结算时会自动离座。',
+    leaveNote: '离开后分数会保存。之后用同一个昵称回来坐下，分数接着算。', leavingTag: '打完就走', kickBtn: '请他离座', unkickBtn: '取消请离', waitSeat: '有空座，等新玩家坐下', sitHere: '坐下',
+    emptySeatHint: '等新玩家入座', newTag: '刚加入，下一局开始', goneT: '已离开（同昵称回来可接着算）', spectateSeat: '现在有空座位：填好昵称，点牌桌上的“坐下”就能加入。新玩家从 0 分开始；如果你之前在这桌打过，用同一个昵称坐下，分数会接着算。',
     voteBtn: '申请重置', unvoteBtn: '取消我的申请', chat: '聊天', noChat: '还没有人说话', logT: '牌局记录', noLog: '还没有记录', sep: '：',
     saved: '进度自动保存在房间里。下次用同一个浏览器打开就能接着打。', noDb: '还没连上数据库，请稍等', denied: '数据库拒绝写入：请检查 Firestore 规则',
     failed: '操作失败，请重试', chatDenied: '聊天被数据库拒绝：请检查 Firestore 规则里有没有 chat 那一段', chatFail: '消息没发出去，请重试',
@@ -365,7 +378,7 @@ const I18N = {
     bdBase: '底分 {n}', bdGrab: '抢地主 ×{n}', bdBomb: '炸弹 ×{n}', bdSpring: '春天 ×2', bdAnti: '反春 ×2', bdTotal: '每家 {n} 分', outTag: '出完了',
     dblNote: '加倍的人和地主之间再 ×2（地主加倍对两家都 ×2）',
     phrases: ['快点出牌呀，等得我都饿了', '这把稳了！', '农民兄弟，顶住！', '地主别跑！', '我是地主我怕谁', '你走，我掩护', '要大牌，别给小的', '我要放大招了', '手气太差了……', '再来一盘！', '配合愉快'],
-    err: { notSeated: '你还没有入座', inGameNoSwap: '游戏进行中，不能换座', seatTaken: '这个座位已经有人了', inGameNoLeave: '游戏进行中，不能离座', started: '游戏已经开始了',
+    err: { haveSeat: '你已经有座位了', kickOnlyEnd: '只能在一局结束后请人离座', cantKick: '不能请这个座位离开', kickReady: '他已经准备好了，不能请他离座', kickWait: '一局结束 30 秒后他还没准备，才能请他离座', notSeated: '你还没有入座', inGameNoSwap: '游戏进行中，不能换座', seatTaken: '这个座位已经有人了', inGameNoLeave: '游戏进行中，不能离座', started: '游戏已经开始了',
       needThree: '需要3个人坐满才能开始', notBidding: '现在不是叫地主的时候', notDoubling: '现在不是选择加倍的时候', alreadyChose: '你已经选过了',
       cantPlay: '现在不能出牌', notYourTurn: '还没轮到你',
       playNotInHand: '出的牌不在你手里', cantBeat: '管不上，或者这不是有效的牌型', invalidType: '这不是有效的牌型', cantAct: '现在不能操作', mustLead: '你是先手，必须出牌',
@@ -373,7 +386,9 @@ const I18N = {
     log: { start: '新的一盘开始，底分2分，分数一直累计', round: '第{r}局：决定牌是 {card}，{s} 先叫地主', redeal: '三人都不叫，重新发牌：决定牌是 {card}，{s} 先叫地主',
       bid: '{s}：{a}', autoBid: '{s} 超时，自动“{a}”', nobody: '三个人都不叫', lord: '{s} 当地主，底牌是 {cards}', dbl: '{s} 加倍', lead: '{s}（地主）先出牌',
       bomb: '{s} 出了炸弹，倍数 ×2', rocket: '{s} 出了王炸，倍数 ×2', lordWin: '地主 {s} 获胜，赢 {n} 分', farmWin: '农民获胜，地主 {s} 输 {n} 分', spring: '春天！倍数 ×2', anti: '反春！倍数 ×2',
-      reset: '对局已重置，可以重新选座后开始', vote: '{s} 申请重置（{n}/3）', unvote: '{s} 取消了重置申请',
+      reset: '对局已重置，可以重新选座后开始', vote: '{s} 申请清零重开（{n}人同意）', unvote: '{s} 取消了清零申请',
+      join: '{s} 坐下加入了牌桌（从 0 分开始）', back: '{s} 回来了，接着之前的 {n} 分', left: '{s} 离开了牌桌（{n} 分已保存）', leftAfter: '{s} 打完这局离开了牌桌（{n} 分已保存）',
+      kicked: '{s} 被请离座位（{n} 分已保存）', leaveLater: '{s} 打完这局就走', stayOn: '{s} 决定继续打', kickVote: '{s} 申请请 {t} 离座（{n}/{m}）',
       autoPass: '{s} 超时，自动“不出”', autoPlay: '{s} 超时，自动出了 {card}', paused: '{s} 暂停了牌局', resumed: '{s} 继续了牌局' },
   },
   en: {
@@ -382,7 +397,7 @@ const I18N = {
     langBtn: '中文', empty: 'Empty seat', player: 'Player', you: ' (you)',
     bigJoker: 'Big Joker', smallJoker: 'Small Joker', jokerFace: ['JOKER', 'JOKER'],
     seatClick: 'Tap to sit', mySeat: 'Your seat', taken: 'Taken',
-    lobbyHelp: 'Three players. After calling and grabbing, the landlord plays alone against two farmers. Base score 2; every grab, bomb, rocket and spring doubles it, and once the landlord is set everyone may choose to double. Scores keep adding up.',
+    lobbyHelp: 'Three players. After calling and grabbing, the landlord plays alone against two farmers. Base score 2; every grab, bomb, rocket and spring doubles it, and once the landlord is set everyone may choose to double. Scores keep adding up; players can swap in and out between rounds, and scores of those who leave are saved.',
     waitThree: 'Waiting for 3 players', leave: 'Leave seat', myCount: '{n} cards', left: '{n} left', claim: 'This is my seat',
     tomatoAria: 'Throw a tomato at {name}', tomatoTitle: 'Throw a tomato', coffeeAria: 'Pour coffee for {name}', coffeeTitle: 'Pour coffee', thinking: 'Thinking…', bidThinking: 'Deciding…', considering: 'Deciding…', pass: 'Pass',
     roundOver: 'Round {r} finished', endLast: 'Last play', endLeft: 'Left', finalPlay: 'Final play', rvTitle: 'Cards left this round (all revealed)', rvOut: 'Out', rvCount: '{n} left', yourTurn: 'Your turn', free: ' (free lead)',
@@ -391,7 +406,10 @@ const I18N = {
     store: 'Storage', toStore: 'Move to storage', unstore: 'Back to hand', play: 'Play', clear: 'Clear selection', beatHint: "Beat {name}'s {label} {key}",
     leadHint: 'You lead — any valid combination',
     notTurn: 'Not your turn yet — you can arrange and pre-select cards', chooseHint: 'These cards can be played in more than one way. Choose one:', handTitle: 'Your hand ({n} cards) · tap a card, or press and slide across several to select; tap again to deselect',
-    scoresT: 'Scores', scoreNote: 'Base score 2 · scores keep adding up', lastRound: 'last round {d}', resetTitle: 'Reset mid-match', resetText: 'When all 3 players agree, scores are cleared and everyone returns to the lobby. {n}/3 agreed so far.',
+    scoresT: 'Scores', scoreNote: 'Base score 2 · scores keep adding up and follow each person', lastRound: 'last round {d}', resetTitle: 'Clear and restart', resetText: "When everyone seated agrees, all scores (including those who left) are cleared and everyone returns to the lobby. {n}/{m} agreed so far.",
+    seatTitle: 'Leave / swap players', leaveTable: 'Leave the table', leaveLaterBtn: 'Leave after this round', stayBtn: 'Cancel, keep playing', leaveLaterNote: 'This round plays out as normal; you leave your seat automatically when it ends, and your score is saved.', leavingNote: "You'll leave your seat automatically when this round ends.",
+    leaveNote: 'Your score is saved when you leave. Come back with the same nickname and it carries on.', leavingTag: 'Leaving', kickBtn: 'Ask to leave', unkickBtn: 'Cancel request', waitSeat: 'A seat is free — waiting for a new player', sitHere: 'Sit here',
+    emptySeatHint: 'Waiting for a player', newTag: 'Just joined — plays next round', goneT: 'Left the table (same nickname picks up the score)', spectateSeat: 'A seat is free: enter your nickname and tap “Sit here” on the table. New players start at 0; if you played at this table before, use the same nickname and your score carries on.',
     voteBtn: 'Request a reset', unvoteBtn: 'Withdraw my request', chat: 'Chat', noChat: 'No messages yet', logT: 'Game log', noLog: 'Nothing yet', sep: ': ',
     saved: 'Progress is saved in the room automatically. Open the site in the same browser next time to carry on.', noDb: 'Not connected to the database yet — please wait', denied: 'The database refused the change — check the Firestore rules',
     failed: 'Something went wrong — please try again', chatDenied: 'The database refused the chat message — check the chat section of the Firestore rules', chatFail: "Message didn't send — please try again",
@@ -415,7 +433,7 @@ const I18N = {
     bdBase: 'Base {n}', bdGrab: 'Grabs ×{n}', bdBomb: 'Bombs ×{n}', bdSpring: 'Spring ×2', bdAnti: 'Reverse spring ×2', bdTotal: '{n} per farmer', outTag: 'Out',
     dblNote: "A farmer's double ×2 only between him and the landlord; the landlord's double ×2 for both",
     phrases: ["Hurry up, I'm getting hungry", "We've got this one!", 'Hold on, fellow farmer!', "Landlord, you can't escape!", "I'm the landlord, bring it on", "You go, I'll cover you", 'Play high, not low', 'Big move incoming', 'My cards are awful…', 'One more match!', 'Nice teamwork'],
-    err: { notSeated: "You haven't taken a seat", inGameNoSwap: "You can't change seats during a match", seatTaken: 'That seat is taken', inGameNoLeave: "You can't leave your seat during a match", started: 'The game has already started',
+    err: { haveSeat: 'You already have a seat', kickOnlyEnd: 'You can only ask someone to leave after a round ends', cantKick: "You can't remove that seat", kickReady: "They're ready, so they can't be asked to leave", kickWait: 'You can ask someone to leave once they still are not ready 30 seconds after the round ends', notSeated: "You haven't taken a seat", inGameNoSwap: "You can't change seats during a match", seatTaken: 'That seat is taken', inGameNoLeave: "You can't leave your seat during a match", started: 'The game has already started',
       needThree: 'All 3 seats must be filled to start', notBidding: "It's not time to call landlord", notDoubling: "It's not time to choose doubling", alreadyChose: 'You already chose',
       cantPlay: "You can't play right now", notYourTurn: "It's not your turn",
       playNotInHand: "Those cards aren't in your hand", cantBeat: "That doesn't beat the last play, or isn't a valid combination", invalidType: "That isn't a valid combination", cantAct: "You can't do that right now", mustLead: "You're leading, so you must play",
@@ -423,7 +441,9 @@ const I18N = {
     log: { start: 'New match — base score 2, scores keep adding up', round: 'Round {r}: starter card {card}, {s} calls first', redeal: 'Nobody called — re-dealt: starter card {card}, {s} calls first',
       bid: '{s}: {a}', autoBid: '{s} ran out of time — “{a}”', nobody: 'Nobody called', lord: '{s} is the landlord; the kitty was {cards}', dbl: '{s} doubled', lead: '{s} (landlord) leads',
       bomb: '{s} played a bomb — multiplier ×2', rocket: '{s} played the rocket — multiplier ×2', lordWin: 'Landlord {s} wins {n} points', farmWin: 'The farmers win; landlord {s} loses {n} points', spring: 'Spring! Multiplier ×2', anti: 'Reverse spring! Multiplier ×2',
-      reset: 'Match reset — pick seats and start again', vote: '{s} requested a reset ({n}/3)', unvote: '{s} withdrew their reset request',
+      reset: 'Match reset — pick seats and start again', vote: '{s} asked to clear and restart ({n} agreed)', unvote: '{s} withdrew their restart request',
+      join: '{s} joined the table (starting at 0)', back: '{s} is back, picking up {n} points', left: '{s} left the table ({n} points saved)', leftAfter: '{s} left after the round ({n} points saved)',
+      kicked: '{s} was asked to leave ({n} points saved)', leaveLater: '{s} will leave after this round', stayOn: '{s} is staying', kickVote: '{s} asked {t} to leave ({n}/{m})',
       autoPass: '{s} ran out of time — automatic pass', autoPlay: '{s} ran out of time — {card} played automatically', paused: '{s} paused the game', resumed: '{s} resumed the game' },
   },
 };
@@ -441,14 +461,14 @@ function keyNameL(p) {
   return vnameL(p.key);
 }
 const trickLabel = (tk) => (tk.type ? describeL(tk) : '');
-const SEATKEYS = ['s'];
+const SEATKEYS = ['s', 't'];
 function logHTML(st, e) {
   const tpl = D().log[e.k];
   if (!tpl) return '';
   return esc(tpl).replace(/\{(\w+)\}/g, (m, key) => {
     const v = e[key];
     if (v == null) return m;
-    if (SEATKEYS.includes(key)) return '<b>' + esc(seatName(st, v)) + '</b>';
+    if (SEATKEYS.includes(key)) { const nm = e['_' + key]; return '<b>' + esc(nm ? nm + (st.seats[v] === uid && rawName(st, v) === nm ? T('you') : '') : seatName(st, v)) + '</b>'; }
     if (key === 'card') return esc(cardNameL(v));
     if (key === 'cards') return esc(cardsL(v));
     if (key === 'a') return esc(D().acts[v] || v);
@@ -467,6 +487,8 @@ function applyStatic() {
 const cur = () => states[room] || H.fresh();
 function toast(m) { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 3200); }
 function rawName(st, s) { const u = st.seats[s]; return u ? (st.names && st.names[u]) || '' : ''; }
+// 上一局的名字：那个座位后来换了人的话，显示当时打牌的人
+function prevName(st, s) { const p = st.prev; if (p && p.uids && p.uids[s] !== st.seats[s]) return p.names[s] || T('player'); return seatName(st, s); }
 function seatName(st, s) { const u = st.seats[s]; if (!u) return T('empty'); return (rawName(st, s) || T('player')) + (u === uid ? T('you') : ''); }
 const fmt = (st, m) => esc(m).replace(/@(\d)/g, (_, s) => '<b>' + esc(seatName(st, +s)) + '</b>');
 
@@ -733,7 +755,7 @@ function sendThrow(item, to) {
   lastSend = Date.now();
   const who = rawName(st, to) || '玩家';
   const text = item === 'tomato' ? `向 ${who} 扔了一个番茄` : `给 ${who} 倒了一杯卡布奇诺`;
-  const m = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), seat: me, to, kind: 'act', item, text, name: nick.trim() };
+  const m = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), seat: me, to, toName: rawName(st, to), kind: 'act', item, text, name: nick.trim() };
   chatWrite(room, (list) => list.concat([m]).slice(-30));
 }
 function seatBox(s) { const el = document.querySelector(`.pl[data-seat="${s}"]`); return el ? el.getBoundingClientRect() : null; }
@@ -859,7 +881,7 @@ function cardEl(id, cls = '', btn = false, style = '') {
 const backEl = () => '<span class="cd back" aria-hidden="true"></span>';
 const mini = (ids) => `<div class="mini">${ids.map((i) => cardEl(i)).join('')}</div>`;
 // ================= 画面 =================
-let revealT = 0;
+let revealT = 0, kickT = 0;
 function render() {
   const st = cur();
   document.querySelectorAll('.tab[data-r]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.r === room));
@@ -874,6 +896,9 @@ function render() {
   $('#stage').innerHTML = st.phase === 'lobby' ? lobbyHTML(st, me) : gameHTML(st, me);
   $('#side').innerHTML = sideHTML(st, me);
   $('#chatpanel').hidden = me < 0;
+  // 一局结束 30 秒后，没准备的人旁边才出现“请他离座”，到时间再画一次
+  clearTimeout(kickT);
+  if (st.phase === 'roundEnd' && kickLeft(st) > 0) kickT = setTimeout(render, kickLeft(st) + 50);
   const rv = revealLeft(st);
   // 决定牌亮完、手牌发完、“先叫”的人亮完以后，再各画一次
   clearTimeout(revealT);
@@ -911,9 +936,12 @@ function lobbyHTML(st, me) {
 }
 
 // 剩几张牌一直显示，剩 2 张及以下变成醒目的黄色
+// 结算时刚换进来的人（上一局不是他打的）
+const swapped = (st, s) => st.phase === 'roundEnd' && st.prev && st.prev.uids && st.prev.uids[s] !== st.seats[s];
 function countHTML(st, s, me) {
   const g = st.g;
   if (st.phase === 'roundEnd' && isReady(st, s)) return `<span class="rdy">✓ ${esc(T('readyTag'))}</span>`;
+  if (swapped(st, s)) return esc(T('newTag'));
   if (revealLeft(st)) return '';
   const n = g.hands[s].length;
   if (!n) return `<span class="badge out">${esc(T('outTag'))}</span>`;
@@ -926,14 +954,29 @@ const dblTag = () => `<span class="tg dbl">${esc(T('dblTag'))}</span>`;
 function roleTags(st, s) {
   const g = st.g;
   let h = '';
+  if (swapped(st, s)) return h;
   if (g.lord >= 0) h += g.lord === s ? lordTag() : farmTag();
   if (g.dbl && g.dbl[s]) h += dblTag();
+  if ((st.leaving || []).includes(st.seats[s])) h += `<span class="tg leaving">${esc(T('leavingTag'))}</span>`;
   if (st.phase === 'bid' && !revealLeft(st) && g.first === s) h += `<span class="tg first">${esc(T('firstTag', { card: cardNameL(g.mark) }))}</span>`;
   return h;
 }
 const FIRST_FLASH = 2400;
+// 一局结束后，没点准备的人：其余在座的人都同意，就可以请他离座
+const kickLeft = (st) => (st.prev && st.prev.at ? H.KICK_WAIT * 1000 - (Date.now() - st.prev.at) : 0);
+function kickBtnHTML(st, s, me) {
+  if (st.phase !== 'roundEnd' || me < 0 || s === me || !st.seats[s] || isReady(st, s) || kickLeft(st) > 0) return '';
+  const list = (st.kicks || {})[s] || [];
+  const m = st.seats.filter((x, i) => x && i !== s).length;
+  const on = list.includes(uid);
+  return `<button class="btn ghost small kickbtn" data-act="${on ? 'unkick' : 'kick'}" data-i="${s}">${esc(T(on ? 'unkickBtn' : 'kickBtn'))}${list.length ? ` ${list.length}/${m}` : ''}</button>`;
+}
 function playerHTML(st, s, pos, me) {
   const g = st.g;
+  if (!st.seats[s]) {
+    const btn = me < 0 && uid && st.phase === 'roundEnd' ? `<button class="btn small" data-act="sit" data-i="${s}">${esc(T('sitHere'))}</button>` : '';
+    return `<div class="pl pos-${pos} emptyseat" data-seat="${s}"><div class="nm">${esc(T('empty'))}</div><div class="meta">${esc(T('emptySeatHint'))}</div>${btn}</div>`;
+  }
   const turn = g.turn === s && (st.phase === 'play' || (st.phase === 'bid' && !revealLeft(st)));
   const name = seatName(st, s);
   const claim = me < 0 && uid ? `<button class="btn ghost small" data-act="claim" data-i="${s}">${esc(T('claim'))}</button>` : '';
@@ -944,7 +987,7 @@ function playerHTML(st, s, pos, me) {
     const el = nowOf(st) - (g.dealtAt + H.REVEAL_MS);
     if (el < FIRST_FLASH) { fc = 'firstflash'; fs = ` style="animation-delay:-${Math.max(0, Math.round(el))}ms"`; }
   }
-  return `<div class="pl pos-${pos} ${turn ? 'turn' : ''} ${fc}" data-seat="${s}"${fs}>${bubbleHTML(s)}<div class="nm">${esc(name)}${roleTags(st, s)}</div><div class="meta">${countHTML(st, s, me)}</div>${acts}${claim}</div>`;
+  return `<div class="pl pos-${pos} ${turn ? 'turn' : ''} ${fc}" data-seat="${s}"${fs}>${bubbleHTML(s)}<div class="nm">${esc(name)}${roleTags(st, s)}</div><div class="meta">${countHTML(st, s, me)}</div>${acts}${claim}${kickBtnHTML(st, s, me)}</div>`;
 }
 function slotHTML(st, s, pos) {
   const g = st.g;
@@ -989,11 +1032,13 @@ function resultHTML(st, me) {
   const rows = SEATS.map((s) => {
     const d = p.delta[s];
     const tags = (s === p.lord ? lordTag() : farmTag()) + (p.dbl[s] ? dblTag() : '');
-    return `<li><b>${esc(seatName(st, s))}</b>${tags}<span class="dl ${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : ''}${d}</span></li>`;
+    return `<li><b>${esc(prevName(st, s))}</b>${tags}<span class="dl ${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : ''}${d}</span></li>`;
   }).join('');
   const title = T(p.lordWin ? 'lordWinT' : 'farmWinT') + (p.spring ? ' · ' + T('springT') : p.anti ? ' · ' + T('antiT') : '');
   const dn = p.dbl.some(Boolean) ? `<div class="bd">${esc(T('dblNote'))}</div>` : '';
-  const btn = `${readyBtnHTML(st, me, T('readyNext'))}<div class="lvl">${esc(T('readyCount', { n: readyCount(st) }))} · ${esc(T('autoDeal'))}</div>`;
+  const empty = st.seats.some((x) => !x);
+  const leave = me >= 0 ? `<button class="btn ghost" data-act="leave" style="pointer-events:auto">${esc(T('leaveTable'))}</button>` : '';
+  const btn = `<div class="endacts">${readyBtnHTML(st, me, T('readyNext'))}${leave}</div><div class="lvl">${esc(T('readyCount', { n: readyCount(st) }))} · ${esc(empty ? T('waitSeat') : T('autoDeal'))}</div>`;
   return `<div class="felt endres"><div class="lvl">${esc(T('roundOver', { r: st.round }))}</div><div class="big">${esc(title)}</div><div class="bd">${esc(bdText(p))}</div><ul class="res rows">${rows}</ul>${dn}${btn}</div>`;
 }
 function panelHTML(st, me) {
@@ -1015,7 +1060,7 @@ function revealHTML(st) {
   const rows = order.map((s) => {
     const h = p.left[s] || [];
     const cards = h.length ? `<div class="mini">${h.map((id) => cardEl(id)).join('')}</div>` : `<span class="rv-out">${esc(T('rvOut'))}</span>`;
-    return `<div class="rv-row"><div class="rv-name">${esc(seatName(st, s))}${s === p.lord ? lordTag() : farmTag()}${h.length ? `<small>${esc(T('rvCount', { n: h.length }))}</small>` : ''}</div><div class="rv-cards">${cards}</div></div>`;
+    return `<div class="rv-row"><div class="rv-name">${esc(prevName(st, s))}${s === p.lord ? lordTag() : farmTag()}${h.length ? `<small>${esc(T('rvCount', { n: h.length }))}</small>` : ''}</div><div class="rv-cards">${cards}</div></div>`;
   }).join('');
   return `<div class="handwrap leftover"><h3>${esc(T('rvTitle'))}</h3>${rows}</div>`;
 }
@@ -1032,7 +1077,7 @@ function endGridHTML(st, seats, pos) {
     const lc = h.length ? esc(T('rvCount', { n: h.length })) : esc(T('rvOut'));
     const rows = (last ? `<div class="eb-row"><span class="k">${esc(T(s === fin ? 'finalPlay' : 'endLast'))}</span>${last}</div>` : '')
       + (h.length ? `<div class="eb-row"><span class="k">${esc(T('endLeft'))}</span><div class="tiny">${h.map((id) => cardEl(id)).join('')}</div></div>` : '');
-    return `<div class="eb eb-${pos[k]} ${s === fin ? 'fin' : ''}"><div class="eb-h">${esc(seatName(st, s))}${tags}<span class="lc">${lc}</span></div>${rows}</div>`;
+    return `<div class="eb eb-${pos[k]} ${s === fin ? 'fin' : ''}"><div class="eb-h">${esc(prevName(st, s))}${tags}<span class="lc">${lc}</span></div>${rows}</div>`;
   }).join('');
   return `<div class="endgrid ${seats.length === 3 ? 'three' : ''}">${blocks}</div>`;
 }
@@ -1045,7 +1090,7 @@ function gameHTML(st, me) {
   const pos = ['bot', 'right', 'left'];
   const seats = SEATS.map((k) => (base + k) % 3);
   const rv = revealLeft(st) > 0;
-  let turnMsg = T('roundEnd'), tm = '';
+  let turnMsg = st.phase === 'roundEnd' && st.seats.some((x) => !x) ? T('waitSeat') : T('roundEnd'), tm = '';
   if (st.paused) turnMsg = T('pausedTitle');
   else if (st.phase === 'bid') { if (rv) turnMsg = T('dealingMsg'); else { turnMsg = g.turn === me ? T('yourBid') : T('waitBid', { name: seatName(st, g.turn) }); tm = timerHTML(st); } }
   else if (st.phase === 'double') { turnMsg = T('doubling'); tm = ttimerHTML(st); }
@@ -1053,7 +1098,8 @@ function gameHTML(st, me) {
   const canPause = me >= 0 && !st.paused && ['bid', 'double', 'play'].includes(st.phase);
   const status = `<div class="status"><span>${esc(T('statusRound', { r: st.round }))}</span><span class="lvbig">${esc(T('h1'))}</span><span>${esc(T('baseLine', { b: H.BASE }))}</span><span class="turnmsg">${esc(turnMsg)}${tm && !st.paused ? ' · ' + tm + esc(T('secs')) : ''}</span>${canPause ? `<button class="btn sec small" data-act="pause">${esc(T('pauseBtn'))}</button>` : ''}</div>`;
   const table = `<div class="felt table ${st.phase === 'roundEnd' ? 'ended' : ''}">${seats.map((s, k) => playerHTML(st, s, pos[k], me)).join('')}${dipaiHTML(st)}<div class="mid">${(st.phase === 'roundEnd' && !!st.prev) && !st.paused ? endGridHTML(st, seats, pos) : seats.map((s, k) => slotHTML(st, s, pos[k])).join('') + panelHTML(st, me)}</div></div>`;
-  if (me < 0) return status + table + endResHTML(st, me) + `<div class="handwrap"><span class="small">${esc(T('spectate'))}</span></div>`;
+  const spec = st.phase === 'roundEnd' && st.seats.some((x) => !x) ? 'spectateSeat' : 'spectate';
+  if (me < 0) return status + table + endResHTML(st, me) + `<div class="handwrap"><span class="small">${esc(T(spec))}</span></div>`;
   return status + table + endResHTML(st, me) + handHTML(st, me);
 }
 
@@ -1102,28 +1148,37 @@ function handHTML(st, me) {
 
 function chatLine(st, m) {
   let text = m.text;
-  if (m.kind === 'act') text = T(m.item === 'tomato' ? 'actTomato' : 'actCoffee', { name: m.to != null ? seatName(st, m.to).replace(D().you, '') : '' });
+  if (m.kind === 'act') text = T(m.item === 'tomato' ? 'actTomato' : 'actCoffee', { name: m.toName || (m.to != null ? seatName(st, m.to).replace(D().you, '') : '') });
   else if (m.p != null && D().phrases[m.p]) text = D().phrases[m.p];
   if (m.kind === 'stk') { const s = stk(m.text); if (s) return `<li><b>${esc(m.name || seatName(st, m.seat))}</b>${esc(D().sep)}<img class="inl" src="${s.src}" alt="${esc(stkName(s))}"></li>`; }
   return `<li><b>${esc(m.name || seatName(st, m.seat))}</b>${esc(D().sep)}${esc(text)}</li>`;
 }
 function sideHTML(st, me) {
-  const top = Math.max(...st.scores);
+  const seated = SEATS.filter((s) => st.seats[s]);
+  const top = seated.length ? Math.max(...seated.map((s) => st.scores[s])) : 0;
   const scores = SEATS.map((s) => {
+    if (!st.seats[s]) return `<div class="score empty"><span class="who">${esc(T('empty'))}</span><span class="pts">–</span></div>`;
     const n = st.scores[s];
-    const last = st.prev && st.phase !== 'lobby' ? st.prev.delta[s] : null;
+    const last = st.prev && st.phase !== 'lobby' && (!st.prev.uids || st.prev.uids[s] === st.seats[s]) ? st.prev.delta[s] : null;
     const lastHTML = last != null ? `<span class="last">${esc(T('lastRound', { d: (last > 0 ? '+' : '') + last }))}</span>` : '';
     return `<div class="score ${n === top && n > 0 ? 'lead' : ''}"><span class="who">${esc(seatName(st, s))}${lastHTML}</span><span class="pts">${n > 0 ? '+' : ''}${n}</span></div>`;
   }).join('');
+  const goneList = (st.gone || []).map((x) => `<div class="score"><span class="who">${esc(x.name || T('player'))}</span><span class="pts">${x.pts > 0 ? '+' : ''}${x.pts}</span></div>`).join('');
+  const gone = goneList ? `<div class="gone"><div class="small">${esc(T('goneT'))}</div>${goneList}</div>` : '';
   let reset = '';
   if (st.phase !== 'lobby' && me >= 0) {
     const voted = (st.votes || []).includes(uid);
-    reset = `<div class="card"><h3>${esc(T('resetTitle'))}</h3><p class="small" style="margin:0 0 10px">${esc(T('resetText', { n: (st.votes || []).length }))}</p>
+    const leaving = (st.leaving || []).includes(uid);
+    const inRound = ['bid', 'double', 'play'].includes(st.phase);
+    const leaveRow = inRound
+      ? `<p class="small" style="margin:0 0 8px">${esc(T(leaving ? 'leavingNote' : 'leaveLaterNote'))}</p><button class="btn sec" data-act="${leaving ? 'stay' : 'later'}">${esc(T(leaving ? 'stayBtn' : 'leaveLaterBtn'))}</button>`
+      : `<p class="small" style="margin:0 0 8px">${esc(T('leaveNote'))}</p><button class="btn sec" data-act="leave">${esc(T('leaveTable'))}</button>`;
+    reset = `<div class="card"><h3>${esc(T('seatTitle'))}</h3>${leaveRow}<hr class="sep"><h3>${esc(T('resetTitle'))}</h3><p class="small" style="margin:0 0 10px">${esc(T('resetText', { n: (st.votes || []).length, m: seated.length }))}</p>
       <button class="btn sec" data-act="${voted ? 'unvote' : 'vote'}">${esc(voted ? T('unvoteBtn') : T('voteBtn'))}</button></div>`;
   }
   const chat = chats[room].slice(-8).reverse().map((m) => chatLine(st, m)).join('');
   const logs = st.log.slice(-14).reverse().map((m) => `<li>${logHTML(st, m)}</li>`).join('');
-  return `<div class="card"><h3>${esc(T('scoresT'))}</h3><p class="small" style="margin:0 0 4px">${esc(T('scoreNote'))}</p>${scores}</div>${reset}<div class="card"><h3>${esc(T('chat'))}</h3><ul class="log">${chat || `<li class="small">${esc(T('noChat'))}</li>`}</ul></div><div class="card"><h3>${esc(T('logT'))}</h3><ul class="log">${logs || `<li class="small">${esc(T('noLog'))}</li>`}</ul></div>
+  return `<div class="card"><h3>${esc(T('scoresT'))}</h3><p class="small" style="margin:0 0 4px">${esc(T('scoreNote'))}</p>${scores}${gone}</div>${reset}<div class="card"><h3>${esc(T('chat'))}</h3><ul class="log">${chat || `<li class="small">${esc(T('noChat'))}</li>`}</ul></div><div class="card"><h3>${esc(T('logT'))}</h3><ul class="log">${logs || `<li class="small">${esc(T('noLog'))}</li>`}</ul></div>
    <div class="card small">${esc(T('saved'))}</div>`;
 }
 
@@ -1216,7 +1271,9 @@ document.addEventListener('click', async (e) => {
     if (a === 'tostore') gs.push(H.sortHand([...sel]));
     setGroups(gs); sel.clear(); choice = null; render(); return;
   }
-  if (a === 'sit') { if (!needNick()) return; return mutate((s) => withName(H.sit(s, uid, +t.dataset.i))); }
+  if (a === 'sit') { if (!needNick()) return; return mutate((s) => withName(H.sit(s, uid, +t.dataset.i, nick.trim()))); }
+  if (a === 'later' || a === 'stay') { const on = a === 'later'; return mutate((s) => H.leaveLater(s, uid, on)); }
+  if (a === 'kick' || a === 'unkick') { const i = +t.dataset.i, on = a === 'kick'; return mutate((s) => H.kick(s, uid, i, on)); }
   if (a === 'claim') {
     if (!needNick()) return;
     const i = +t.dataset.i;
@@ -1224,7 +1281,9 @@ document.addEventListener('click', async (e) => {
       if (s.seats.includes(uid)) throw new Error(T('haveSeat'));
       const old = s.seats[i];
       if (!old || ((s.names || {})[old] || '') !== nick.trim()) throw new Error(T('nickMismatch'));
-      s.seats[i] = uid; s.votes = (s.votes || []).map((v) => (v === old ? uid : v)); s.ready = (s.ready || []).map((v) => (v === old ? uid : v));
+      const sw = (v) => (v === old ? uid : v);
+      s.seats[i] = uid; s.votes = (s.votes || []).map(sw); s.ready = (s.ready || []).map(sw); s.leaving = (s.leaving || []).map(sw);
+      if (s.kicks) for (const k in s.kicks) s.kicks[k] = s.kicks[k].map(sw);
       return withName(s);
     });
   }

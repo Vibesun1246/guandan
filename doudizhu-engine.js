@@ -10,6 +10,7 @@ const DDZ = (() => {
   const BID_SECS = 15;     // 叫地主 / 抢地主
   const DBL_SECS = 10;     // 加倍
   const REVEAL_MS = 2500;  // 发牌前亮出决定先叫的那张牌
+  const KICK_WAIT = 30;    // 一局结束后多少秒还没准备，才能请他离座
   const VN = { 11: 'J', 12: 'Q', 13: 'K', 14: 'A', 15: '2', 16: '小王', 17: '大王' };
 
   const E = (code) => { const e = new Error(code); e.code = code; return e; };
@@ -99,7 +100,16 @@ const DDZ = (() => {
   function fresh() {
     return { v: 0, game: 'doudizhu', phase: 'lobby', seats: [null, null, null], scores: [0, 0, 0], round: 0, g: null, prev: null, votes: [], log: [], ready: [] };
   }
-  function log(st, k, p) { st.log.push(Object.assign({ k }, p || {})); if (st.log.length > 40) st.log.splice(0, st.log.length - 40); }
+  // 记录里同时记下当时坐在那个座位上的人的名字（换人以后，旧记录不会变成新人的名字）
+  function log(st, k, p) {
+    const e = Object.assign({ k }, p || {});
+    for (const key of ['s', 't']) {
+      const u = e[key] != null && e[key] >= 0 ? st.seats[e[key]] : null;
+      if (u && st.names && st.names[u]) e['_' + key] = st.names[u];
+    }
+    st.log.push(e);
+    if (st.log.length > 40) st.log.splice(0, st.log.length - 40);
+  }
   const seatOf = (st, uid) => st.seats.indexOf(uid);
   function needSeat(st, uid) { const s = seatOf(st, uid); if (s < 0) throw E('notSeated'); return s; }
   const now = (st) => st._now || Date.now();
@@ -107,28 +117,89 @@ const DDZ = (() => {
   const nx = (s) => (s + 1) % N;
   const evPush = (st, o) => { st.ev = Object.assign({ k: (st.ev ? st.ev.k : 0) + 1 }, o); };
 
-  function sit(st, uid, i) {
-    if (st.phase !== 'lobby') throw E('inGameNoSwap');
+  // ---------- 入座 / 离座 / 换人 ----------
+  // 选座大厅里随便坐、随便换；开局以后，只有在一局结束（结算）的时候才能离座或坐进空座位。
+  // 分数跟着人走：离开的人分数存进“已离开”名单，之后用同一个昵称回来坐下，分数接着算；新来的人从 0 分开始。
+  const canSwap = (st) => st.phase === 'lobby' || st.phase === 'roundEnd';
+  function sit(st, uid, i, name) {
+    if (!canSwap(st)) throw E('inGameNoSwap');
     if (st.seats[i] && st.seats[i] !== uid) throw E('seatTaken');
     if (st.seats[i] === uid) return st;
+    const nm = String(name || '').trim();
+    if (nm) { st.names = st.names || {}; st.names[uid] = nm; }
     const c = seatOf(st, uid);
-    if (c >= 0) st.seats[c] = null;
-    st.seats[i] = uid;
+    if (st.phase === 'lobby') {
+      if (c >= 0) st.seats[c] = null;
+      st.seats[i] = uid;
+    } else {
+      if (c >= 0) throw E('haveSeat');
+      st.seats[i] = uid;
+      const gone = st.gone || [];
+      const k = nm ? gone.findIndex((x) => x.name === nm) : -1;
+      st.scores[i] = k >= 0 ? gone[k].pts : 0;
+      if (k >= 0) gone.splice(k, 1);
+      st.gone = gone;
+      st.kicks = {};
+      log(st, k >= 0 ? 'back' : 'join', { s: i, n: st.scores[i] });
+    }
     st.ready = (st.ready || []).filter((x) => x !== uid);
     return st;
   }
+  // 让一个座位空出来：分数存进“已离开”名单
+  function vacate(st, s, why) {
+    const u = st.seats[s];
+    if (!u) return;
+    const name = (st.names && st.names[u]) || '';
+    log(st, why, { s, n: st.scores[s] });
+    st.gone = (st.gone || []).filter((x) => !name || x.name !== name);
+    st.gone.push({ name, pts: st.scores[s] });
+    if (st.gone.length > 30) st.gone.splice(0, st.gone.length - 30);
+    st.seats[s] = null;
+    st.scores[s] = 0;
+    const drop = (list) => (list || []).filter((x) => x !== u);
+    st.ready = drop(st.ready); st.votes = drop(st.votes); st.leaving = drop(st.leaving);
+    st.kicks = {};
+  }
   function leave(st, uid) {
-    if (st.phase !== 'lobby') throw E('inGameNoLeave');
+    if (!canSwap(st)) throw E('inGameNoLeave');
     const c = seatOf(st, uid);
-    if (c >= 0) st.seats[c] = null;
-    st.ready = (st.ready || []).filter((x) => x !== uid);
+    if (c < 0) return st;
+    if (st.phase === 'roundEnd') vacate(st, c, 'left');
+    else { st.seats[c] = null; st.ready = (st.ready || []).filter((x) => x !== uid); }
+    return st;
+  }
+  // 对局中点“打完这局就走”：这局照常打，结算时自动离座。一局结束时点就直接离座。
+  function leaveLater(st, uid, on) {
+    const s = needSeat(st, uid);
+    if (canSwap(st)) return on ? leave(st, uid) : st;
+    st.leaving = (st.leaving || []).filter((x) => x !== uid);
+    if (on) st.leaving.push(uid);
+    log(st, on ? 'leaveLater' : 'stayOn', { s });
+    return st;
+  }
+  // 一局结束后，有人没点准备（比如直接关了网页）：其余在座的人都同意，就可以请他离座
+  function kick(st, uid, target, on) {
+    const s = needSeat(st, uid);
+    if (st.phase !== 'roundEnd') throw E('kickOnlyEnd');
+    const u = st.seats[target];
+    if (!u || target === s) throw E('cantKick');
+    if ((st.ready || []).includes(u)) throw E('kickReady');
+    // 留 2 秒余量：各人电脑的时钟可能差一点
+    if (on && st.prev && st.prev.at && now(st) - st.prev.at < KICK_WAIT * 1000 - 2000) throw E('kickWait');
+    st.kicks = st.kicks || {};
+    const list = (st.kicks[target] || []).filter((x) => x !== uid && x !== u && st.seats.includes(x));
+    if (on) list.push(uid);
+    st.kicks[target] = list;
+    const others = st.seats.filter((x, i) => x && i !== target);
+    if (on) log(st, 'kickVote', { s, t: target, n: list.length, m: others.length });
+    if (others.length && others.every((x) => list.includes(x))) vacate(st, target, 'kicked');
     return st;
   }
   function start(st, uid, rng) {
     if (st.phase !== 'lobby') throw E('started');
     if (st.seats.some((s) => !s)) throw E('needThree');
     needSeat(st, uid);
-    Object.assign(st, { scores: [0, 0, 0], round: 0, votes: [], prev: null, log: [] });
+    Object.assign(st, { scores: [0, 0, 0], round: 0, votes: [], prev: null, log: [], gone: [], leaving: [], kicks: {} });
     log(st, 'start');
     deal(st, rng);
     return st;
@@ -161,6 +232,7 @@ const DDZ = (() => {
     st.phase = 'bid';
     st.votes = [];
     st.ready = [];
+    st.kicks = {};
     log(st, redo ? 'redeal' : 'round', { r: st.round, card: mark, s: first });
     return st;
   }
@@ -347,6 +419,8 @@ const DDZ = (() => {
     st.prev = {
       lord: L, lordWin, last: s, spring, anti, grabs: g.grabs, bombs: g.bombs, base: BASE, m: r.m,
       dbl: g.dbl.slice(), delta: r.delta, pair: r.pair, left: g.hands.map((h) => sortHand(h)),
+      // 记下这局是谁打的：之后有人换座，结算和复盘仍然显示当时的名字
+      at: now(st), uids: st.seats.slice(), names: st.seats.map((u) => (u && st.names && st.names[u]) || ''),
     };
     const note = { k: lordWin ? 'lordWin' : 'farmWin', s: L, n: Math.abs(r.delta[L]) };
     log(st, note.k, note);
@@ -354,19 +428,22 @@ const DDZ = (() => {
     if (anti) log(st, 'anti');
     st.phase = 'roundEnd';
     g.turn = -1;
+    // 点了“打完这局就走”的人，现在自动离座
+    for (const u of st.leaving || []) { const x = seatOf(st, u); if (x >= 0) vacate(st, x, 'leftAfter'); }
+    st.leaving = [];
     return st;
   }
   function setReady(st, uid, on, rng) {
     needSeat(st, uid);
     if (st.phase !== 'lobby' && st.phase !== 'roundEnd') throw E('cantReady');
     st.ready = (st.ready || []).filter((x) => x !== uid && st.seats.includes(x));
-    if (on) st.ready.push(uid);
+    if (on) { st.ready.push(uid); if (st.kicks) delete st.kicks[seatOf(st, uid)]; }
     const all = st.seats.every((x) => x && st.ready.includes(x));
     if (all) { if (st.phase === 'lobby') start(st, uid, rng); else deal(st, rng); }
     return st;
   }
   function toLobby(st) {
-    Object.assign(st, { phase: 'lobby', g: null, paused: null, ready: [], votes: [], scores: [0, 0, 0], round: 0, prev: null });
+    Object.assign(st, { phase: 'lobby', g: null, paused: null, ready: [], votes: [], scores: [0, 0, 0], round: 0, prev: null, gone: [], leaving: [], kicks: {} });
     log(st, 'reset');
     return st;
   }
@@ -376,14 +453,15 @@ const DDZ = (() => {
     st.votes = st.votes.filter((x) => x !== uid && st.seats.includes(x));
     if (on) { st.votes.push(uid); log(st, 'vote', { s, n: st.votes.length }); }
     else log(st, 'unvote', { s });
-    if (st.seats.every((x) => st.votes.includes(x))) toLobby(st);
+    // 在座的人都同意（有空座时只算在座的人）
+    if (st.seats.filter(Boolean).every((x) => st.votes.includes(x))) toLobby(st);
     return st;
   }
 
   return {
-    card, val, cv, vname, cardName, sortHand, analyze, beats, options, fresh, sit, leave, start, deal, setReady, vote, toLobby,
+    card, val, cv, vname, cardName, sortHand, analyze, beats, options, fresh, sit, leave, leaveLater, kick, start, deal, setReady, vote, toLobby,
     bid, bidOptions, double, play, pass, timeout, dblTimeout, pause, resume, mult, settle,
-    N, BASE, TURN_SECS, BID_SECS, DBL_SECS, REVEAL_MS, SUIT_CH,
+    N, BASE, KICK_WAIT, TURN_SECS, BID_SECS, DBL_SECS, REVEAL_MS, SUIT_CH,
   };
 })();
 if (typeof module !== 'undefined') module.exports = DDZ;
