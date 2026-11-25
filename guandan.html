@@ -172,6 +172,26 @@ aside{display:flex;flex-direction:column;gap:14px}
  .status .turnmsg{margin-left:0;width:100%}
 }
 @media(prefers-reduced-motion:reduce){.cd{transition:none}.bubble{animation:none}}
+
+/* 一局结束：直接在牌桌上明牌——每家这一轮出的牌 + 剩余手牌 */
+.endgrid{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"top top" "left right" "bot bot";gap:8px;align-content:center;min-height:100%}
+.endgrid.three{grid-template-areas:"left right" "bot bot"}
+.eb{background:rgba(0,0,0,.28);border-radius:14px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.eb.fin{box-shadow:0 0 0 2px rgba(232,180,58,.8) inset}
+.eb-top{grid-area:top}.eb-left{grid-area:left}.eb-right{grid-area:right}.eb-bot{grid-area:bot}
+.eb-h{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:14px;font-weight:700;color:#fff}
+.eb-h .lc{font-weight:500;font-size:13px;opacity:.85}
+.eb-row{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap}
+.eb-row>.k{font-size:12px;color:rgba(255,255,255,.7);flex:none;min-width:3.2em}
+.eb .mini{flex-wrap:wrap;row-gap:6px}
+.eb .ps{padding:4px 10px;font-size:15px}
+.tiny{display:flex;flex-wrap:wrap;padding-left:12px;row-gap:6px}
+.tiny .cd{width:31px;height:43px;margin-left:-12px;padding:2px 3px;border-radius:5px;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.tiny .cd b,.tiny .cd i{font-size:11px}.tiny .cd em,.tiny .cd u{display:none}.tiny .cd.joker b{font-size:9px}
+.finTag{background:var(--gold);color:#3a2600;font-weight:900;font-size:12px;padding:1px 7px;border-radius:6px}
+.endres{margin-top:14px;padding:16px 18px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.endres .res{text-align:left}
+@media(max-width:600px){.endgrid,.endgrid.three{grid-template-columns:minmax(0,1fr);grid-template-areas:"top" "left" "right" "bot"}}
 </style>
 </head>
 <body>
@@ -680,7 +700,7 @@ const I18N = {
     start: '开始游戏', waitFour: '等待4人坐满', leave: '离开座位', myCount: '{n} 张', left: '剩 {n} 张', claim: '这是我的座位',
     tomatoAria: '向{name}扔番茄', tomatoTitle: '扔番茄', coffeeAria: '给{name}倒咖啡', coffeeTitle: '倒咖啡', thinking: '出牌中…', pass: '不出',
     tribRule: '两张进贡牌：大的给头游，小的给二游', tribPicking: '正在挑选进贡的牌', tribWaitRet: '进贡了 {card}，等待还贡', tribDone: '进贡 {card}，已收到还贡',
-    tribToEither: '头游或二游', tribHanded: '交出了 {card}，等另一张进贡牌', tribPanel: '第 {r} 局 · 进贡与还贡', roundOver: '第 {r} 局结束', rvTitle: '本局剩余手牌（全部明牌）', rvOut: '已出完', rvCount: '剩 {n} 张',
+    tribToEither: '头游或二游', tribHanded: '交出了 {card}，等另一张进贡牌', tribPanel: '第 {r} 局 · 进贡与还贡', roundOver: '第 {r} 局结束', endLast: '最后出', endLeft: '剩余', finalPlay: '最后一手', rvTitle: '本局剩余手牌（全部明牌）', rvOut: '已出完', rvCount: '剩 {n} 张',
     nextRound: '开始下一局', waitNext: '等待玩家开始下一局', resetLobby: '重置，回到选座大厅', yourTurn: '轮到你出牌', free: '（自由出牌）',
     waitFor: '等待 {name} 出牌', tribPhase: '进贡阶段', roundEnd: '本局结束', statusRound: '第 {r} 局 · 本局打', bothFrom2: '两队都从2开始',
     teamLevel: '{team}的级', wilds: '♥{L}、♦{L} 是万能牌', orderLine: '{pos}：{name}（{team}）',
@@ -721,7 +741,7 @@ const I18N = {
     start: 'Start game', waitFour: 'Waiting for 4 players', leave: 'Leave seat', myCount: '{n} cards', left: '{n} left', claim: 'This is my seat',
     tomatoAria: 'Throw a tomato at {name}', tomatoTitle: 'Throw a tomato', coffeeAria: 'Pour coffee for {name}', coffeeTitle: 'Pour coffee', thinking: 'Thinking…', pass: 'Pass',
     tribRule: 'Two tribute cards: the higher goes to 1st out, the lower to 2nd out', tribPicking: 'choosing a tribute card', tribWaitRet: 'paid {card}, waiting for a card back', tribDone: 'paid {card}, card returned',
-    tribToEither: '1st or 2nd out', tribHanded: 'handed in {card}, waiting for the other tribute', tribPanel: 'Round {r} · Tribute', roundOver: 'Round {r} finished', rvTitle: 'Cards left this round (all revealed)', rvOut: 'Out', rvCount: '{n} left',
+    tribToEither: '1st or 2nd out', tribHanded: 'handed in {card}, waiting for the other tribute', tribPanel: 'Round {r} · Tribute', roundOver: 'Round {r} finished', endLast: 'Last play', endLeft: 'Left', finalPlay: 'Final play', rvTitle: 'Cards left this round (all revealed)', rvOut: 'Out', rvCount: '{n} left',
     nextRound: 'Start next round', waitNext: 'Waiting for a player to start the next round', resetLobby: 'Reset and return to the lobby', yourTurn: 'Your turn', free: ' (free lead)',
     waitFor: 'Waiting for {name}', tribPhase: 'Tribute', roundEnd: 'Round over', statusRound: 'Round {r} · Playing level', bothFrom2: 'both teams start at 2',
     teamLevel: "{team}'s level", wilds: '♥{L} and ♦{L} are wild', orderLine: '{pos}: {name} ({team})',
@@ -994,12 +1014,13 @@ const stkName = (s) => (lang === 'zh' ? s.zh : s.en);
 const EMOTES = ['😂', '👍', '😎', '😭', '😡', '🤔', '🎉', '💣', '🙏', '😴'];
 const chats = { r1: [], r2: [] }, chatInit = { r1: false, r2: false }, seen = new Set(), bubbles = {};
 let lastSend = 0;
+const bubbleDelay = (b) => ` style="animation-delay:-${Math.max(0, Math.min(1000, Date.now() - (b.start || 0)))}ms"`;
 function bubbleHTML(s) {
   const b = bubbles[room + ':' + s];
   if (!b || b.until < Date.now()) return '';
-  if (b.kind === 'stk') { const s = stk(b.text); return s ? `<div class="bubble stk"><img src="${s.src}" alt="${esc(stkName(s))}"></div>` : ''; }
+  if (b.kind === 'stk') { const s = stk(b.text); return s ? `<div class="bubble stk"${bubbleDelay(b)}><img src="${s.src}" alt="${esc(stkName(s))}"></div>` : ''; }
   const text = b.p != null && D().phrases[b.p] ? D().phrases[b.p] : b.text;
-  return `<div class="bubble ${b.kind === 'emo' ? 'emo' : ''}">${esc(text)}</div>`;
+  return `<div class="bubble ${b.kind === 'emo' ? 'emo' : ''}"${bubbleDelay(b)}>${esc(text)}</div>`;
 }
 function onChat(r, list) {
   let fresh = false;
@@ -1008,7 +1029,7 @@ function onChat(r, list) {
     seen.add(m.id);
     if (!chatInit[r]) continue;
     if (m.kind === 'act') { if (r === room) setTimeout(() => throwFx(m.item, m.seat, m.to), 0); continue; }
-    bubbles[r + ':' + m.seat] = { kind: m.kind, text: m.text, p: m.p, until: Date.now() + 4000 }; setTimeout(render, 4100); if (r === room) fresh = true;
+    bubbles[r + ':' + m.seat] = { kind: m.kind, text: m.text, p: m.p, start: Date.now(), until: Date.now() + 4000 }; setTimeout(render, 4100); if (r === room) fresh = true;
   }
   chatInit[r] = true;
   chats[r] = list;
@@ -1236,15 +1257,6 @@ function panelHTML(st, me) {
     }).join('');
     return `<div class="panel"><div class="lvl">${esc(T('tribPanel', { r: st.round }))}</div><div class="lv">${G.rname(g.L)}</div>${rule}<ul class="res">${lines}</ul></div>`;
   }
-  if (st.phase === 'roundEnd' || st.phase === 'matchEnd') {
-    const p = st.prev;
-    const list = p.order.map((s, i) => `<li>${esc(T('orderLine', { pos: posName(i), name: '\u0000', team: teamName(G.team(s)) })).replace('\u0000', `<b>${esc(seatName(st, s))}</b>`)}</li>`).join('');
-    const notes = p.notes.map((n) => `<div class="big">${logHTML(st, n)}</div>`).join('');
-    const btn = st.phase === 'roundEnd'
-      ? `${readyBtnHTML(st, me, T('readyNext'))}<div class="lvl">${esc(T('readyCount', { n: readyCount(st) }))} · ${esc(T('autoDeal'))}</div>`
-      : (me >= 0 ? `<button class="btn" data-act="reset" style="pointer-events:auto">${esc(T('resetLobby'))}</button>` : '');
-    return `<div class="panel"><div class="lvl">${esc(T('roundOver', { r: st.round }))}</div><ul class="res">${list}</ul>${notes}${btn}</div>`;
-  }
   return `<div class="center"><div class="lv">${G.rname(g.L)}</div></div>`;
 }
 
@@ -1260,6 +1272,34 @@ function revealHTML(st) {
   return `<div class="handwrap leftover"><h3>${esc(T('rvTitle'))}</h3>${rows}</div>`;
 }
 
+// 一局结束后，牌桌中央改成“复盘”：每家这一轮出的牌（含最后一手）和剩余手牌全部明牌
+function endGridHTML(st, seats, pos) {
+  const g = st.g, p = st.prev;
+  const fin = g.last ? g.last.seat : -1;
+  const blocks = seats.map((s, k) => {
+    const tk = g.trick[s];
+    const h = G.sortHand(g.hands[s] || [], g.L);
+    const last = tk ? (tk.pass ? `<div class="ps">${esc(T('pass'))}</div>` : mini(tk.ids, g.L)) : '';
+    const tags = `<span class="tg t${G.team(s)}">${esc(teamName(G.team(s)))}</span>` + (p.order.indexOf(s) >= 0 ? `<span class="badge">${esc(posName(p.order.indexOf(s)))}</span>` : '');
+    const lc = h.length ? esc(T('rvCount', { n: h.length })) : esc(T('rvOut'));
+    const rows = (last ? `<div class="eb-row"><span class="k">${esc(T(s === fin ? 'finalPlay' : 'endLast'))}</span>${last}</div>` : '')
+      + (h.length ? `<div class="eb-row"><span class="k">${esc(T('endLeft'))}</span><div class="tiny">${h.map((id) => cardEl(id, g.L)).join('')}</div></div>` : '');
+    return `<div class="eb eb-${pos[k]} ${s === fin ? 'fin' : ''}"><div class="eb-h">${esc(seatName(st, s))}${tags}<span class="lc">${lc}</span></div>${rows}</div>`;
+  }).join('');
+  return `<div class="endgrid ${seats.length === 3 ? 'three' : ''}">${blocks}</div>`;
+}
+
+function endResHTML(st, me) {
+  if (!(st.phase === 'roundEnd' || st.phase === 'matchEnd') || !st.prev) return '';
+    const p = st.prev;
+    const list = p.order.map((s, i) => `<li>${esc(T('orderLine', { pos: posName(i), name: '\u0000', team: teamName(G.team(s)) })).replace('\u0000', `<b>${esc(seatName(st, s))}</b>`)}</li>`).join('');
+    const notes = p.notes.map((n) => `<div class="big">${logHTML(st, n)}</div>`).join('');
+    const btn = st.phase === 'roundEnd'
+      ? `${readyBtnHTML(st, me, T('readyNext'))}<div class="lvl">${esc(T('readyCount', { n: readyCount(st) }))} · ${esc(T('autoDeal'))}</div>`
+      : (me >= 0 ? `<button class="btn" data-act="reset" style="pointer-events:auto">${esc(T('resetLobby'))}</button>` : '');
+    return `<div class="felt endres"><div class="lvl">${esc(T('roundOver', { r: st.round }))}</div><ul class="res">${list}</ul>${notes}${btn}</div>`;
+  }
+
 function gameHTML(st, me) {
   const g = st.g;
   const base = me >= 0 ? me : 0;
@@ -1272,9 +1312,9 @@ function gameHTML(st, me) {
   else turnMsg = T('roundEnd');
   const L = G.rname(g.L);
   const status = `<div class="status"><span>${esc(T('statusRound', { r: st.round }))}</span><span class="lvbig">${L}</span><span>${esc(g.lt < 0 ? T('bothFrom2') : T('teamLevel', { team: teamName(g.lt) }))} · ${esc(T('wilds', { L }))}</span><span class="turnmsg">${esc(turnMsg)}${st.phase === 'play' && remaining(st) != null ? ' · ' + timerHTML(st) + esc(T('secs')) : ''}</span>${me >= 0 && !st.paused && (st.phase === 'play' || st.phase === 'tribute') ? `<button class="btn sec small" data-act="pause">${esc(T('pauseBtn'))}</button>` : ''}</div>`;
-  const table = `<div class="felt table">${seats.map((s, k) => playerHTML(st, s, pos[k], me)).join('')}<div class="mid">${seats.map((s, k) => slotHTML(st, s, pos[k])).join('')}${panelHTML(st, me)}</div></div>`;
-  if (me < 0) return status + table + revealHTML(st) + `<div class="handwrap"><span class="small">${esc(T('spectate'))}</span></div>`;
-  return status + table + revealHTML(st) + handHTML(st, me);
+  const table = `<div class="felt table">${seats.map((s, k) => playerHTML(st, s, pos[k], me)).join('')}<div class="mid">${(st.phase === 'roundEnd' || st.phase === 'matchEnd') && !st.paused ? endGridHTML(st, seats, pos) : seats.map((s, k) => slotHTML(st, s, pos[k])).join('') + panelHTML(st, me)}</div></div>`;
+  if (me < 0) return status + table + endResHTML(st, me) + `<div class="handwrap"><span class="small">${esc(T('spectate'))}</span></div>`;
+  return status + table + endResHTML(st, me) + handHTML(st, me);
 }
 
 function handHTML(st, me) {

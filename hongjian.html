@@ -214,6 +214,26 @@ a.tab{display:inline-flex;align-items:center;text-decoration:none}
 .bar i{display:block;height:100%;background:var(--felt)}
 .lobby .info .lv{font-size:30px}
 @media(max-width:600px){.tabs{width:100%;flex-wrap:wrap}.tab{flex:1 1 auto;padding:4px 10px;font-size:14px;white-space:nowrap;justify-content:center}}
+
+/* 一局结束：直接在牌桌上明牌——每家这一轮出的牌 + 剩余手牌 */
+.endgrid{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"top top" "left right" "bot bot";gap:8px;align-content:center;min-height:100%}
+.endgrid.three{grid-template-areas:"left right" "bot bot"}
+.eb{background:rgba(0,0,0,.28);border-radius:14px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.eb.fin{box-shadow:0 0 0 2px rgba(232,180,58,.8) inset}
+.eb-top{grid-area:top}.eb-left{grid-area:left}.eb-right{grid-area:right}.eb-bot{grid-area:bot}
+.eb-h{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:14px;font-weight:700;color:#fff}
+.eb-h .lc{font-weight:500;font-size:13px;opacity:.85}
+.eb-row{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap}
+.eb-row>.k{font-size:12px;color:rgba(255,255,255,.7);flex:none;min-width:3.2em}
+.eb .mini{flex-wrap:wrap;row-gap:6px}
+.eb .ps{padding:4px 10px;font-size:15px}
+.tiny{display:flex;flex-wrap:wrap;padding-left:12px;row-gap:6px}
+.tiny .cd{width:31px;height:43px;margin-left:-12px;padding:2px 3px;border-radius:5px;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.tiny .cd b,.tiny .cd i{font-size:11px}.tiny .cd em,.tiny .cd u{display:none}.tiny .cd.joker b{font-size:9px}
+.finTag{background:var(--gold);color:#3a2600;font-weight:900;font-size:12px;padding:1px 7px;border-radius:6px}
+.endres{margin-top:14px;padding:16px 18px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.endres .res{text-align:left}
+@media(max-width:600px){.endgrid,.endgrid.three{grid-template-columns:minmax(0,1fr);grid-template-areas:"top" "left" "right" "bot"}}
 </style>
 </head>
 <body>
@@ -284,7 +304,7 @@ const I18N = {
     lobbyHelp: '选一个座位坐下。队伍是暗的：拿到红A（♥A、♦A）的人是一队，一个人拿到两张红A就一打三。先出完的一队获胜。',
     waitFour: '等待4人坐满', leave: '离开座位', myCount: '{n} 张', left: '剩 {n} 张', claim: '这是我的座位',
     tomatoAria: '向{name}扔番茄', tomatoTitle: '扔番茄', coffeeAria: '给{name}倒咖啡', coffeeTitle: '倒咖啡', thinking: '出牌中…', pass: '不出',
-    roundOver: '第 {r} 局结束', rvTitle: '本局剩余手牌（全部明牌）', rvOut: '已出完', rvCount: '剩 {n} 张', resetLobby: '重置，回到选座大厅', yourTurn: '轮到你出牌', free: '（自由出牌）',
+    roundOver: '第 {r} 局结束', endLast: '最后出', endLeft: '剩余', finalPlay: '最后一手', rvTitle: '本局剩余手牌（全部明牌）', rvOut: '已出完', rvCount: '剩 {n} 张', resetLobby: '重置，回到选座大厅', yourTurn: '轮到你出牌', free: '（自由出牌）',
     waitFor: '等待 {name} 出牌', tribPhase: '进贡阶段', roundEnd: '本局结束', statusRound: '第 {r} 局', target: '先到 {n} 分获胜',
     orderLine: '{pos}：{name}', redTag: '红A', redWhere: '红A在：{who}', soloTag: '一打三',
     spectate: '你在观战。如果你是这桌的玩家、只是换了设备或浏览器，填好和之前一样的昵称，再点自己座位上的“这是我的座位”。',
@@ -332,7 +352,7 @@ const I18N = {
     lobbyHelp: 'Pick a seat. Teams are hidden: whoever holds a red Ace (A♥, A♦) is on the same team. One player with both red Aces plays 1 vs 3. The first team to play out all its cards wins.',
     waitFour: 'Waiting for 4 players', leave: 'Leave seat', myCount: '{n} cards', left: '{n} left', claim: 'This is my seat',
     tomatoAria: 'Throw a tomato at {name}', tomatoTitle: 'Throw a tomato', coffeeAria: 'Pour coffee for {name}', coffeeTitle: 'Pour coffee', thinking: 'Thinking…', pass: 'Pass',
-    roundOver: 'Round {r} finished', rvTitle: 'Cards left this round (all revealed)', rvOut: 'Out', rvCount: '{n} left', resetLobby: 'Reset and return to the lobby', yourTurn: 'Your turn', free: ' (free lead)',
+    roundOver: 'Round {r} finished', endLast: 'Last play', endLeft: 'Left', finalPlay: 'Final play', rvTitle: 'Cards left this round (all revealed)', rvOut: 'Out', rvCount: '{n} left', resetLobby: 'Reset and return to the lobby', yourTurn: 'Your turn', free: ' (free lead)',
     waitFor: 'Waiting for {name}', tribPhase: 'Tribute', roundEnd: 'Round over', statusRound: 'Round {r}', target: 'first to {n} points wins',
     orderLine: '{pos}: {name}', redTag: 'Red A', redWhere: 'Red Aces were with: {who}', soloTag: '1 vs 3',
     spectate: "You're watching. If you're one of the players and just switched device or browser, enter the same nickname as before, then tap “This is my seat” on your seat.",
@@ -476,15 +496,17 @@ const SFX = {
 };
 function sfx(name) { if (!opt.sfx || !AU.ctx) return; try { SFX[name](); } catch (e) {} }
 // 原创五声音阶小曲：C D E G A
-const SC = [261.63, 293.66, 329.63, 392, 440, 523.25, 587.33, 659.25];
-const MEL = [2,-1,3,4,3,-1,2,1, 0,-1,1,2,-1,-1,-1,-1, 4,-1,5,4,3,-1,2,-1, 1,2,3,-1,1,-1,-1,-1, 3,-1,4,5,6,-1,5,4, 7,-1,6,5,4,-1,-1,-1, 5,-1,4,3,2,-1,3,-1, 1,2,0,-1,-1,-1,-1,-1];
-const BASS = [130.81, 110, 87.31, 98, 130.81, 110, 87.31, 130.81];
+// 红尖小曲（原创）：A小调五声音阶，速度稍慢，带一点神秘感——谁和谁一队还不知道
+const SC = [220, 261.63, 293.66, 329.63, 392, 440, 523.25, 587.33, 659.25];
+const MEL = [5,-1,6,-1,8,7,6,-1, 5,-1,-1,4,3,-1,-1,-1, 3,-1,4,5,6,-1,5,4, 3,-1,-1,-1,1,2,3,-1, 5,-1,6,7,8,-1,7,6, 7,-1,6,5,4,-1,5,-1, 3,-1,2,-1,1,-1,2,3, 0,-1,-1,-1,-1,-1,-1,-1];
+const BASS = [110, 110, 87.31, 82.41, 110, 98, 87.31, 110];
 function musicTick() {
-  const c = AU.ctx, eighth = 0.4;
+  const c = AU.ctx, eighth = 0.44;
   while (AU.next < c.currentTime + 0.4) {
     const i = AU.step % MEL.length, t = AU.next;
-    if (MEL[i] >= 0) { tone(SC[MEL[i]], t, 1.1, 0.5, 'triangle', AU.music); tone(SC[MEL[i]] * 2, t, 0.5, 0.08, 'sine', AU.music); }
-    if (i % 4 === 0) tone(BASS[Math.floor(i / 8)], t, 1.5, 0.45, 'sine', AU.music);
+    if (MEL[i] >= 0) { tone(SC[MEL[i]], t, 1.3, 0.42, 'sine', AU.music); tone(SC[MEL[i]] * 2, t, 0.35, 0.06, 'triangle', AU.music); }
+    if (i % 8 === 0) { const b = BASS[Math.floor(i / 8)]; tone(b, t, 2.6, 0.42, 'sine', AU.music); tone(b * 1.5, t + 0.02, 2.2, 0.12, 'sine', AU.music); }
+    if (i % 8 === 4) tone(BASS[Math.floor(i / 8)] * 2, t, 0.9, 0.16, 'triangle', AU.music);
     AU.step++; AU.next += eighth;
   }
 }
@@ -606,12 +628,13 @@ const stkName = (s) => (lang === 'zh' ? s.zh : s.en);
 const EMOTES = ['😂', '👍', '😎', '😭', '😡', '🤔', '🎉', '💣', '🙏', '😴'];
 const chats = { h1: [], h2: [] }, chatInit = { h1: false, h2: false }, seen = new Set(), bubbles = {};
 let lastSend = 0;
+const bubbleDelay = (b) => ` style="animation-delay:-${Math.max(0, Math.min(1000, Date.now() - (b.start || 0)))}ms"`;
 function bubbleHTML(s) {
   const b = bubbles[room + ':' + s];
   if (!b || b.until < Date.now()) return '';
-  if (b.kind === 'stk') { const s = stk(b.text); return s ? `<div class="bubble stk"><img src="${s.src}" alt="${esc(stkName(s))}"></div>` : ''; }
+  if (b.kind === 'stk') { const s = stk(b.text); return s ? `<div class="bubble stk"${bubbleDelay(b)}><img src="${s.src}" alt="${esc(stkName(s))}"></div>` : ''; }
   const text = b.p != null && D().phrases[b.p] ? D().phrases[b.p] : b.text;
-  return `<div class="bubble ${b.kind === 'emo' ? 'emo' : ''}">${esc(text)}</div>`;
+  return `<div class="bubble ${b.kind === 'emo' ? 'emo' : ''}"${bubbleDelay(b)}>${esc(text)}</div>`;
 }
 function onChat(r, list) {
   let fresh = false;
@@ -620,7 +643,7 @@ function onChat(r, list) {
     seen.add(m.id);
     if (!chatInit[r]) continue;
     if (m.kind === 'act') { if (r === room) setTimeout(() => throwFx(m.item, m.seat, m.to), 0); continue; }
-    bubbles[r + ':' + m.seat] = { kind: m.kind, text: m.text, p: m.p, until: Date.now() + 4000 }; setTimeout(render, 4100); if (r === room) fresh = true;
+    bubbles[r + ':' + m.seat] = { kind: m.kind, text: m.text, p: m.p, start: Date.now(), until: Date.now() + 4000 }; setTimeout(render, 4100); if (r === room) fresh = true;
   }
   chatInit[r] = true;
   chats[r] = list;
@@ -889,16 +912,6 @@ function panelHTML(st, me) {
     return `<div class="panel paused"><div class="lv">II</div><div class="big">${esc(T('pausedTitle'))}</div><div class="lvl">${esc(T('pausedBy', { name: seatName(st, st.paused.s) }))}</div>${me >= 0 ? `<button class="btn" data-act="resume" style="pointer-events:auto">${esc(T('resumeBtn'))}</button>` : ''}</div>`;
   }
   if (st.phase === 'tribute') return tribPanelHTML(st, me);
-  if (roundOver(st)) {
-    const p = st.prev;
-    const list = p.order.map((s, i) => `<li>${esc(T('orderLine', { pos: posName(i), name: '\u0000' })).replace('\u0000', `<b>${esc(seatName(st, s))}</b>`)}${p.red.includes(s) ? ` <span class="tg red">${esc(T('redTag'))}</span>` : ''}</li>`).join('');
-    const redWho = p.red.length === 1 ? `${seatName(st, p.red[0])} (♥A ♦A) · ${T('soloTag')}` : p.red.map((s) => seatName(st, s)).join(D().and);
-    const notes = p.notes.map((n) => `<div class="big">${logHTML(st, n)}</div>`).join('');
-    const btn = st.phase === 'roundEnd'
-      ? `${readyBtnHTML(st, me, T('readyNext'))}<div class="lvl">${esc(T('readyCount', { n: readyCount(st) }))} · ${esc(T('autoDeal'))}</div>`
-      : (me >= 0 ? `<button class="btn" data-act="reset" style="pointer-events:auto">${esc(T('resetLobby'))}</button>` : '');
-    return `<div class="panel"><div class="lvl">${esc(st.phase === 'matchEnd' ? T('champTitle') : T('roundOver', { r: st.round }))}</div><ul class="res">${list}</ul><div class="lvl">${esc(T('redWhere', { who: redWho }))}</div>${notes}${btn}</div>`;
-  }
   return `<div class="center"><div class="lv">${esc(T('h1'))}</div></div>`;
 }
 
@@ -915,6 +928,35 @@ function revealHTML(st) {
   return `<div class="handwrap leftover"><h3>${esc(T('rvTitle'))}</h3>${rows}</div>`;
 }
 
+// 一局结束后，牌桌中央改成“复盘”：每家这一轮出的牌（含最后一手）和剩余手牌全部明牌
+function endGridHTML(st, seats, pos) {
+  const g = st.g, p = st.prev;
+  const fin = g.last ? g.last.seat : -1;
+  const blocks = seats.map((s, k) => {
+    const tk = g.trick[s];
+    const h = H.sortHand(g.hands[s] || []);
+    const last = tk ? (tk.pass ? `<div class="ps">${esc(T('pass'))}</div>` : mini(tk.ids)) : '';
+    const tags = (p.red && p.red.includes(s) ? `<span class="tg red">${esc(T('redTag'))}</span>` : '') + (p.order.indexOf(s) >= 0 ? `<span class="badge">${esc(posName(p.order.indexOf(s)))}</span>` : '');
+    const lc = h.length ? esc(T('rvCount', { n: h.length })) : esc(T('rvOut'));
+    const rows = (last ? `<div class="eb-row"><span class="k">${esc(T(s === fin ? 'finalPlay' : 'endLast'))}</span>${last}</div>` : '')
+      + (h.length ? `<div class="eb-row"><span class="k">${esc(T('endLeft'))}</span><div class="tiny">${h.map((id) => cardEl(id)).join('')}</div></div>` : '');
+    return `<div class="eb eb-${pos[k]} ${s === fin ? 'fin' : ''}"><div class="eb-h">${esc(seatName(st, s))}${tags}<span class="lc">${lc}</span></div>${rows}</div>`;
+  }).join('');
+  return `<div class="endgrid ${seats.length === 3 ? 'three' : ''}">${blocks}</div>`;
+}
+
+function endResHTML(st, me) {
+  if (!roundOver(st) || !st.prev) return '';
+    const p = st.prev;
+    const list = p.order.map((s, i) => `<li>${esc(T('orderLine', { pos: posName(i), name: '\u0000' })).replace('\u0000', `<b>${esc(seatName(st, s))}</b>`)}${p.red.includes(s) ? ` <span class="tg red">${esc(T('redTag'))}</span>` : ''}</li>`).join('');
+    const redWho = p.red.length === 1 ? `${seatName(st, p.red[0])} (♥A ♦A) · ${T('soloTag')}` : p.red.map((s) => seatName(st, s)).join(D().and);
+    const notes = p.notes.map((n) => `<div class="big">${logHTML(st, n)}</div>`).join('');
+    const btn = st.phase === 'roundEnd'
+      ? `${readyBtnHTML(st, me, T('readyNext'))}<div class="lvl">${esc(T('readyCount', { n: readyCount(st) }))} · ${esc(T('autoDeal'))}</div>`
+      : (me >= 0 ? `<button class="btn" data-act="reset" style="pointer-events:auto">${esc(T('resetLobby'))}</button>` : '');
+    return `<div class="felt endres"><div class="lvl">${esc(st.phase === 'matchEnd' ? T('champTitle') : T('roundOver', { r: st.round }))}</div><ul class="res">${list}</ul><div class="lvl">${esc(T('redWhere', { who: redWho }))}</div>${notes}${btn}</div>`;
+  }
+
 function gameHTML(st, me) {
   const g = st.g;
   const base = me >= 0 ? me : 0;
@@ -925,9 +967,9 @@ function gameHTML(st, me) {
   else if (st.phase === 'play') turnMsg = g.turn === me ? T('yourTurn') + (g.last ? '' : T('free')) : T('waitFor', { name: seatName(st, g.turn) });
   else if (st.phase === 'tribute') turnMsg = T('tribPhase');
   const status = `<div class="status"><span>${esc(T('statusRound', { r: st.round }))}</span><span class="lvbig">${esc(T('h1'))}</span><span>${esc(T('target', { n: H.TARGET }))}</span><span class="turnmsg">${esc(turnMsg)}${st.phase === 'play' && !st.paused && remaining(st) != null ? ' · ' + timerHTML(st) + esc(T('secs')) : ''}</span>${me >= 0 && !st.paused && (st.phase === 'play' || st.phase === 'tribute') ? `<button class="btn sec small" data-act="pause">${esc(T('pauseBtn'))}</button>` : ''}</div>`;
-  const table = `<div class="felt table">${seats.map((s, k) => playerHTML(st, s, pos[k], me)).join('')}<div class="mid">${seats.map((s, k) => slotHTML(st, s, pos[k])).join('')}${panelHTML(st, me)}</div></div>`;
-  if (me < 0) return status + table + revealHTML(st) + `<div class="handwrap"><span class="small">${esc(T('spectate'))}</span></div>`;
-  return status + table + revealHTML(st) + handHTML(st, me);
+  const table = `<div class="felt table">${seats.map((s, k) => playerHTML(st, s, pos[k], me)).join('')}<div class="mid">${roundOver(st) && !st.paused ? endGridHTML(st, seats, pos) : seats.map((s, k) => slotHTML(st, s, pos[k])).join('') + panelHTML(st, me)}</div></div>`;
+  if (me < 0) return status + table + endResHTML(st, me) + `<div class="handwrap"><span class="small">${esc(T('spectate'))}</span></div>`;
+  return status + table + endResHTML(st, me) + handHTML(st, me);
 }
 
 // 进贡阶段我要做什么：{ kind: 'give'|'ret', n } 或 null
