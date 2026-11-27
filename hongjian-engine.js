@@ -5,7 +5,8 @@ const H = (() => {
   const SUIT_CH = { S: '♠', H: '♥', C: '♣', D: '♦', J: '' };
   const HEART3 = 14; // ♥3：第一局拿到它的人先出
   const RED_A = [25, 51]; // ♥A、♦A
-  const TRIB_SECS = 15;
+  const TRIB_SECS = 15; // 进贡、挑进贡牌
+  const RET_SECS = 30; // 还贡、挑还贡牌：多给点时间考虑
   const TURN_SECS = 40;
   const TARGET = 11;
   const POS = ['头游', '二游', '三游', '末游'];
@@ -130,6 +131,17 @@ const H = (() => {
     st.ready = (st.ready || []).filter((x) => x !== uid);
     return st;
   }
+  // 对局中离开牌桌：这一整盘作废，分数全部清零，其余三人回到选座大厅重新开始
+  function quit(st, uid) {
+    const s = needSeat(st, uid);
+    if (st.phase === 'lobby') return leave(st, uid);
+    const name = (st.names || {})[uid] || '';
+    st.seats[s] = null;
+    Object.assign(st, { phase: 'lobby', g: null, paused: null, ready: [], votes: [], scores: [0, 0, 0, 0], round: 0, winner: null, prev: null });
+    log(st, 'quit', { name });
+    st.ev = { k: (st.ev ? st.ev.k : 0) + 1, kind: 'quit', u: uid, name };
+    return st;
+  }
   function start(st, uid, rng) {
     if (st.phase !== 'lobby') throw E('started');
     if (st.seats.some((s) => !s)) throw E('needFour');
@@ -178,7 +190,7 @@ const H = (() => {
     const g = st.g, pv = st.prev;
     const W = pv.winners, L = pv.losers;
     g.trib = {
-      step: 'give', at: now(st),
+      step: 'give', at: now(st), secs: TRIB_SECS,
       gc: Math.max(1, W.length / L.length), rc: Math.max(1, L.length / W.length),
       givers: L.slice(), gives: {}, pool: [], pickers: [], want: {}, ok: {}, got: {}, rets: {}, retPool: [], retGot: {},
     };
@@ -236,7 +248,7 @@ const H = (() => {
         log(st, 'takeAll', { s: W[0], cards: t.pool });
         toRet(st);
       } else {
-        Object.assign(t, { step: 'pick', at: now(st), pickers: W.slice(), want: {}, ok: {} });
+        Object.assign(t, { step: 'pick', at: now(st), secs: TRIB_SECS, pickers: W.slice(), want: {}, ok: {} });
       }
     }
     if (t.step === 'pick' && t.pickers.every((s) => t.ok[s])) finishPick(st);
@@ -247,7 +259,7 @@ const H = (() => {
         log(st, 'takeAllRet', { s: L[0], cards: t.retPool });
         toPlay(st);
       } else {
-        Object.assign(t, { step: 'pickRet', at: now(st), pickers: L.slice(), want: {}, ok: {} });
+        Object.assign(t, { step: 'pickRet', at: now(st), secs: RET_SECS, pickers: L.slice(), want: {}, ok: {} });
       }
     }
     if (t.step === 'pickRet' && t.pickers.every((s) => t.ok[s])) finishPick(st);
@@ -261,7 +273,7 @@ const H = (() => {
   }
   function toRet(st) {
     const t = st.g.trib;
-    Object.assign(t, { step: 'ret', at: now(st), pickers: [], want: {}, ok: {} });
+    Object.assign(t, { step: 'ret', at: now(st), secs: RET_SECS, pickers: [], want: {}, ok: {} });
   }
   function toPlay(st) {
     const g = st.g;
@@ -461,9 +473,9 @@ const H = (() => {
   }
 
   return {
-    card, val, cv, isA, isRedA, vname, cardName, sortHand, analyze, beats, options, fresh, sit, leave, start, deal, setReady, vote, toLobby,
+    card, val, cv, isA, isRedA, vname, cardName, sortHand, analyze, beats, options, fresh, sit, leave, quit, start, deal, setReady, vote, toLobby,
     play, pass, timeout, pause, resume, giveTribute, giveBack, wantCard, tribTimeout, topInfo, validTop,
-    HEART3, RED_A, TRIB_SECS, TURN_SECS, TARGET, POS, SUIT_CH,
+    HEART3, RED_A, TRIB_SECS, RET_SECS, TURN_SECS, TARGET, POS, SUIT_CH,
   };
 })();
 if (typeof module !== 'undefined') module.exports = H;
