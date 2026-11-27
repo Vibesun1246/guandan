@@ -101,8 +101,8 @@ button.cd{cursor:pointer;font:inherit}
 .rv-cards .mini{flex-wrap:wrap;row-gap:8px}
 .rv-out{color:var(--sub);font-weight:700}
 @media(max-width:600px){.rv-row{grid-template-columns:minmax(0,1fr)}}
-.mini{display:flex;padding-left:22px}
-.mini .cd{width:40px;height:58px;margin-left:-22px;padding:2px 4px;border-radius:6px}
+.mini{display:flex;padding-left:18px}
+.mini .cd{width:40px;height:58px;margin-left:-18px;padding:2px 4px;border-radius:6px}
 .mini .cd b{font-size:15px}.mini .cd i{font-size:15px}.mini .cd em,.mini .cd u{display:none}.mini .cd.joker b{font-size:12px}
 .handwrap{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px 16px 14px}
 .hand{display:flex;flex-wrap:wrap;row-gap:10px;padding:18px 0 4px 26px;min-height:96px;touch-action:none}
@@ -165,7 +165,7 @@ aside{display:flex;flex-direction:column;gap:14px}
  .pos-left .nm,.pos-right .nm{font-size:13px}
  .pl{padding:6px 4px}
  .s-left{top:92px;transform:none}.s-right{top:auto;bottom:92px;transform:none}
- .mini{padding-left:18px}.mini .cd{width:32px;height:46px;margin-left:-18px}.mini .cd b,.mini .cd i{font-size:12px}
+ .mini{padding-left:16px}.mini .cd{width:32px;height:46px;margin-left:-16px}.mini .cd b,.mini .cd i{font-size:12px}
  .cd{width:42px;height:62px;margin-left:-22px}.cd b{font-size:15px}.cd i{font-size:15px}
  .hand{padding-left:22px}.grp{padding-left:30px}
  .lobby{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"info info" "s0 s1" "s2 s3";padding:14px}
@@ -194,9 +194,10 @@ a.tab{display:inline-flex;align-items:center;text-decoration:none}
 .pl{background:rgba(0,0,0,.26)}
 .tg.red{background:#ffb3bd;color:#4a0f18}
 /* 打出的红A：淡红色轮廓，像信号灯一样闪 4 下（每下约半秒），之后保持不闪 */
-.cd.reda{position:relative;z-index:2;outline:3px solid rgba(255,150,160,.95);outline-offset:2px;box-shadow:0 0 10px 2px rgba(255,120,135,.55)}
+/* 红A的淡红圈画在牌的内侧，不会盖住旁边那张牌的点数和花色（比如对A时一眼看出另一张是红是黑） */
+.cd.reda{box-shadow:inset 0 0 0 3px rgba(255,130,145,.95),0 0 9px 2px rgba(255,120,135,.5)}
 .cd.reda.blink{animation:redablink .5s ease-in-out 4 both}
-@keyframes redablink{0%,100%{outline-color:rgba(255,150,160,.95);box-shadow:0 0 14px 4px rgba(255,110,128,.75)}50%{outline-color:rgba(255,150,160,.08);box-shadow:0 0 0 0 rgba(255,110,128,0)}}
+@keyframes redablink{0%,100%{box-shadow:inset 0 0 0 3px rgba(255,130,145,.95),0 0 12px 3px rgba(255,110,128,.7)}50%{box-shadow:inset 0 0 0 3px rgba(255,130,145,.08),0 0 0 0 rgba(255,110,128,0)}}
 @media(prefers-reduced-motion:reduce){.cd.reda.blink{animation:none}}
 /* 进贡挑牌 */
 .pool{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin:4px 0}
